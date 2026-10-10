@@ -31,8 +31,8 @@ test.describe('Phase 4 GIS Dashboard, Roads & Blocked Route Status', () => {
     await expect(page.getByText('Update Road Status')).toBeVisible();
 
     // Select BLOCKED status and type reason
-    await page.getByRole('button', { name: 'BLOCKED' }).click();
-    await expect(page.getByRole('button', { name: 'BLOCKED' })).toHaveClass(/bg-rust-600/);
+    await page.locator('form').getByRole('button', { name: 'BLOCKED', exact: true }).click();
+    await expect(page.locator('form').getByRole('button', { name: 'BLOCKED', exact: true })).toHaveClass(/bg-rust-600/);
     await page.fill('textarea', 'E2E Automated Landslide Blockage Test');
     await page.getByRole('button', { name: 'Update Status' }).click();
 
