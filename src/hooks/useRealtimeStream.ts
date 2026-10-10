@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
+import { apiBaseUrl } from '../api/axios';
 
 export function useRealtimeStream() {
   const { user } = useAuth();
@@ -19,7 +20,6 @@ export function useRealtimeStream() {
 
     const connectSSE = async () => {
       try {
-        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api';
         await fetchEventSource(`${apiBaseUrl}/realtime/stream`, {
           method: 'GET',
           headers: {
