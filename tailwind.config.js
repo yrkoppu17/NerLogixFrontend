@@ -1,0 +1,96 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {
+      colors: {
+        mist: {
+          50: 'var(--mist-50)',
+          100: 'var(--mist-100)',
+          200: 'var(--mist-200)',
+          300: 'var(--mist-300)',
+        },
+        white: 'var(--white)',
+        ink: {
+          300: 'var(--ink-300)',
+          400: 'var(--ink-400)',
+          500: 'var(--ink-500)',
+          600: 'var(--ink-600)',
+          700: 'var(--ink-700)',
+          800: 'var(--ink-800)',
+          900: 'var(--ink-900)',
+        },
+        river: {
+          50: 'var(--river-50)',
+          100: 'var(--river-100)',
+          200: 'var(--river-200)',
+          400: 'var(--river-400)',
+          500: 'var(--river-500)',
+          600: 'var(--river-600)',
+          700: 'var(--river-700)',
+          800: 'var(--river-800)',
+        },
+        tea: {
+          50: 'var(--tea-50)',
+          100: 'var(--tea-100)',
+          200: 'var(--tea-200)',
+          300: 'var(--tea-300)',
+          500: 'var(--tea-500)',
+          600: 'var(--tea-600)',
+          700: 'var(--tea-700)',
+          900: 'var(--tea-900)',
+        },
+        marigold: {
+          50: 'var(--marigold-50)',
+          100: 'var(--marigold-100)',
+          400: 'var(--marigold-400)',
+          500: 'var(--marigold-500)',
+          600: 'var(--marigold-600)',
+          700: 'var(--marigold-700)',
+          800: 'var(--marigold-800)',
+        },
+        rust: {
+          50: 'var(--rust-50)',
+          100: 'var(--rust-100)',
+          200: 'var(--rust-200)',
+          500: 'var(--rust-500)',
+          600: 'var(--rust-600)',
+          700: 'var(--rust-700)',
+          800: 'var(--rust-800)',
+        },
+        crimson: {
+          50: 'var(--crimson-50)',
+          100: 'var(--crimson-100)',
+          200: 'var(--crimson-200)',
+          300: 'var(--crimson-300)',
+          600: 'var(--crimson-600)',
+          700: 'var(--crimson-700)',
+          800: 'var(--crimson-800)',
+        },
+        sky: {
+          100: 'var(--sky-100)',
+          500: 'var(--sky-500)',
+          600: 'var(--sky-600)',
+        },
+      },
+      fontFamily: {
+        heading: ['"Bricolage Grotesque"', 'sans-serif'],
+        body: ['Manrope', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'monospace'],
+        devanagari: ['"Noto Sans Devanagari"', 'sans-serif'],
+        bengali: ['"Noto Sans Bengali"', 'sans-serif'],
+      },
+      borderRadius: {
+        panel: '10px',
+        control: '8px',
+      },
+      boxShadow: {
+        floating: '0 8px 24px rgb(19 33 29 / 0.10)',
+      },
+    },
+  },
+  plugins: [],
+}
