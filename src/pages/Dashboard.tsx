@@ -222,7 +222,14 @@ export const Dashboard: React.FC = () => {
 
       {/* KPI Bar */}
       {loadingSummary ? (
-        <div className="text-center py-6 text-ink-600">Loading summary KPIs...</div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 animate-pulse">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="bg-white p-3.5 rounded-xl border border-mist-200 space-y-2">
+              <div className="h-3 w-16 bg-mist-200 rounded" />
+              <div className="h-6 w-10 bg-mist-300 rounded" />
+            </div>
+          ))}
+        </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
           <div className="bg-white p-3.5 rounded-xl border border-mist-200 space-y-1">

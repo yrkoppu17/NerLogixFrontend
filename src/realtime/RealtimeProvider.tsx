@@ -46,13 +46,18 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
   }, []);
 
-  // Multi-tab BroadcastChannel listener
+  const channelRef = useRef<BroadcastChannel | null>(null);
+
+  // Multi-tab BroadcastChannel synchronization
   useEffect(() => {
     if (typeof BroadcastChannel === 'undefined') return;
     const channel = new BroadcastChannel('nerlogix_sync');
+    channelRef.current = channel;
+
     channel.onmessage = (msgEvent) => {
       const { event, data } = msgEvent.data || {};
       if (event) {
+        handlerMapRef.current.handleEvent(event, data);
         subscribersRef.current.get(event)?.forEach((fn) => {
           try {
             fn(data);
@@ -64,6 +69,7 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
     return () => {
       channel.close();
+      channelRef.current = null;
     };
   }, []);
 
@@ -124,6 +130,13 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
             // Central query patching and toasts
             handlerMapRef.current.handleEvent(eventName, parsed);
+
+            // Broadcast to other open browser tabs
+            try {
+              channelRef.current?.postMessage({ event: eventName, data: parsed });
+            } catch {
+              // Ignore structured clone errors if any
+            }
 
             // Component-specific subscribers
             const handlers = subscribersRef.current.get(eventName);

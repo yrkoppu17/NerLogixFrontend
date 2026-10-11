@@ -217,7 +217,17 @@ export const ShipmentsPage: React.FC = () => {
 
       {/* Shipments List */}
       {isLoading ? (
-        <div className="text-center py-12 text-ink-600">Loading shipments...</div>
+        <div className="space-y-4 animate-pulse">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="bg-white p-5 rounded-panel border border-mist-200 space-y-3">
+              <div className="flex justify-between items-center">
+                <div className="h-4 w-32 bg-mist-200 rounded" />
+                <div className="h-4 w-20 bg-mist-200 rounded" />
+              </div>
+              <div className="h-3 w-48 bg-mist-100 rounded" />
+            </div>
+          ))}
+        </div>
       ) : isError ? (
         <div className="text-center py-12 text-rust-600">
           Failed to load shipments. <button onClick={() => refetch()} className="underline">Retry</button>
