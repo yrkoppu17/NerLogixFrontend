@@ -2,11 +2,22 @@ import React, { Suspense } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 
+import { ToastProvider } from './context/ToastContext'
+import { RealtimeProvider } from './realtime/RealtimeProvider'
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
+      staleTime: 30000,
+      gcTime: 300000,
       refetchOnWindowFocus: false,
-      retry: 1,
+      refetchOnReconnect: true,
+      retry: (failureCount, error: any) => {
+        if (error?.response?.status && error.response.status >= 400 && error.response.status < 500) {
+          return false;
+        }
+        return failureCount < 2;
+      },
     },
   },
 })
@@ -50,9 +61,11 @@ function PageLoading() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <AuthProvider>
-        <Suspense fallback={<PageLoading />}>
+      <ToastProvider>
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <AuthProvider>
+            <RealtimeProvider>
+              <Suspense fallback={<PageLoading />}>
           <Routes>
             <Route path="/" element={<Login />} />
             <Route path="/about" element={<Landing />} />
@@ -282,8 +295,10 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
-      </AuthProvider>
-    </BrowserRouter>
-  </QueryClientProvider>
+            </RealtimeProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </ToastProvider>
+    </QueryClientProvider>
   )
 }

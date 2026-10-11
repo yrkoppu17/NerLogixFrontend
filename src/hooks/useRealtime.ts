@@ -1,49 +1,34 @@
 import { useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { apiBaseUrl, isJwtExpired } from '../api/axios';
-import { fetchEventSource } from '@microsoft/fetch-event-source';
+import { useRealtimeHub } from '../realtime/RealtimeProvider';
 
 export function useRealtime(onEvent?: (event: string, data: unknown) => void) {
-  const { user } = useAuth();
+  const { subscribe } = useRealtimeHub();
 
   useEffect(() => {
-    const accessToken = localStorage.getItem('accessToken');
-    if (!accessToken || !user || isJwtExpired(accessToken)) return;
+    if (!onEvent) return;
 
-    const controller = new AbortController();
+    // Listen to all common events or pass custom handler
+    const eventNames = [
+      'vehicles.positions',
+      'vehicle.update',
+      'shipment.created',
+      'shipment.updated',
+      'shipment.assigned',
+      'dispatch.assigned',
+      'dispatch.accepted',
+      'dispatch.declined',
+      'incident.created',
+      'incident.updated',
+      'alert.created',
+      'weather.updated',
+    ];
 
-    fetchEventSource(`${apiBaseUrl}/realtime/stream`, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: 'text/event-stream',
-      },
-      signal: controller.signal,
-      onopen: async (response) => {
-        if (!response.ok || !response.headers.get('content-type')?.includes('text/event-stream')) {
-          if (response.status === 401 || response.status === 403) {
-            controller.abort();
-          }
-        }
-      },
-      onmessage: (event) => {
-        if (event.event && onEvent) {
-          try {
-            const parsedData = JSON.parse(event.data);
-            onEvent(event.event, parsedData);
-          } catch {
-            onEvent(event.event, event.data);
-          }
-        }
-      },
-      onerror: (err) => {
-        if (controller.signal.aborted) return;
-        throw err;
-      },
-    }).catch(() => {});
+    const unsubs = eventNames.map((name) =>
+      subscribe(name, (data) => onEvent(name, data))
+    );
 
     return () => {
-      controller.abort();
+      unsubs.forEach((u) => u());
     };
-  }, [user, onEvent]);
+  }, [onEvent, subscribe]);
 }
