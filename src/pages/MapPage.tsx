@@ -69,10 +69,15 @@ export const MapPage: React.FC = () => {
   const [updateError, setUpdateError] = useState<string | null>(null);
 
   // Queries
-  const { data: segments = [] } = useQuery({ queryKey: ['mapSegments'], queryFn: getMapSegments });
-  const { data: vehicles = [] } = useQuery({ queryKey: ['mapVehicles'], queryFn: getMapVehicles });
-  const { data: incidents = [] } = useQuery({ queryKey: ['mapIncidents'], queryFn: getMapIncidents });
-  const { data: districts = [] } = useQuery({ queryKey: ['mapDistricts'], queryFn: getMapDistricts });
+  const { data: rawSegments } = useQuery({ queryKey: ['mapSegments'], queryFn: getMapSegments });
+  const { data: rawVehicles } = useQuery({ queryKey: ['mapVehicles'], queryFn: getMapVehicles });
+  const { data: rawIncidents } = useQuery({ queryKey: ['mapIncidents'], queryFn: getMapIncidents });
+  const { data: rawDistricts } = useQuery({ queryKey: ['mapDistricts'], queryFn: getMapDistricts });
+
+  const segments = Array.isArray(rawSegments) ? rawSegments : [];
+  const vehicles = Array.isArray(rawVehicles) ? rawVehicles : [];
+  const incidents = Array.isArray(rawIncidents) ? rawIncidents : [];
+  const districts = Array.isArray(rawDistricts) ? rawDistricts : [];
   const [mapMode, setMapMode] = useState<'LEAFLET' | 'GOOGLE'>('GOOGLE');
   const [googleMapQuery, setGoogleMapQuery] = useState<string>('Guwahati, Assam, India');
 
@@ -453,60 +458,68 @@ export const MapPage: React.FC = () => {
             />
 
             {/* Risk Breakdown Panel: Why is this risky? */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-bold text-ink-900 uppercase tracking-wide">
-                Risk Score Breakdown ({Math.round(selectedSegmentDetail.riskScore)}/100)
-              </h4>
-              {selectedSegmentDetail.riskFactors.length === 0 ? (
-                <p className="text-xs text-ink-400">No active risk factors recorded for this segment.</p>
-              ) : (
-                <div className="space-y-1.5">
-                  {selectedSegmentDetail.riskFactors.map((rf, idx) => (
-                    <div key={idx} className="flex items-center justify-between text-xs p-2 bg-mist-50 rounded border border-mist-200">
-                      <span className="text-ink-600">{rf.label}</span>
-                      <span className="font-mono font-bold text-marigold-500">+{rf.points} pts</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Segment Specs */}
-            <div className="grid grid-cols-2 gap-2 text-xs border-t border-mist-200 pt-3">
-              <div>
-                <span className="text-ink-400">Asset Type:</span> <strong className="text-ink-900">{selectedSegmentDetail.assetType}</strong>
-              </div>
-              <div>
-                <span className="text-ink-400">Length:</span> <strong className="text-ink-900 font-mono">{selectedSegmentDetail.lengthKm} km</strong>
-              </div>
-              <div>
-                <span className="text-ink-400">Terrain Class:</span> <strong className="text-ink-900">{selectedSegmentDetail.terrainClass}</strong>
-              </div>
-              <div>
-                <span className="text-ink-400">Base Speed:</span> <strong className="text-ink-900 font-mono">{selectedSegmentDetail.baseSpeedKmph} km/h</strong>
-              </div>
-            </div>
-
-            {/* History Timeline */}
-            {selectedSegmentDetail.history.length > 0 && (
-              <div className="space-y-2 border-t border-mist-200 pt-3">
-                <h4 className="text-xs font-bold text-ink-900 uppercase tracking-wide">Status History Log</h4>
-                <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
-                  {selectedSegmentDetail.history.map((h) => (
-                    <div key={h.id} className="text-xs border-l-2 border-river-600 pl-2 space-y-0.5">
-                      <div className="flex items-center justify-between text-ink-900 font-medium">
-                        <span>{h.oldStatus} → {h.newStatus}</span>
-                        <span className="text-[10px] text-ink-400 font-mono">
-                          {new Date(h.changedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
+            {(() => {
+              const riskFactors = Array.isArray(selectedSegmentDetail.riskFactors) ? selectedSegmentDetail.riskFactors : [];
+              const history = Array.isArray(selectedSegmentDetail.history) ? selectedSegmentDetail.history : [];
+              return (
+                <>
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold text-ink-900 uppercase tracking-wide">
+                      Risk Score Breakdown ({Math.round(selectedSegmentDetail.riskScore)}/100)
+                    </h4>
+                    {riskFactors.length === 0 ? (
+                      <p className="text-xs text-ink-400">No active risk factors recorded for this segment.</p>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {riskFactors.map((rf, idx) => (
+                          <div key={idx} className="flex items-center justify-between text-xs p-2 bg-mist-50 rounded border border-mist-200">
+                            <span className="text-ink-600">{rf.label}</span>
+                            <span className="font-mono font-bold text-marigold-500">+{rf.points} pts</span>
+                          </div>
+                        ))}
                       </div>
-                      <p className="text-[11px] text-ink-600">{h.reason}</p>
-                      <p className="text-[10px] text-ink-400">By: {h.changedByName}</p>
+                    )}
+                  </div>
+
+                  {/* Segment Specs */}
+                  <div className="grid grid-cols-2 gap-2 text-xs border-t border-mist-200 pt-3">
+                    <div>
+                      <span className="text-ink-400">Asset Type:</span> <strong className="text-ink-900">{selectedSegmentDetail.assetType}</strong>
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
+                    <div>
+                      <span className="text-ink-400">Length:</span> <strong className="text-ink-900 font-mono">{selectedSegmentDetail.lengthKm} km</strong>
+                    </div>
+                    <div>
+                      <span className="text-ink-400">Terrain Class:</span> <strong className="text-ink-900">{selectedSegmentDetail.terrainClass}</strong>
+                    </div>
+                    <div>
+                      <span className="text-ink-400">Base Speed:</span> <strong className="text-ink-900 font-mono">{selectedSegmentDetail.baseSpeedKmph} km/h</strong>
+                    </div>
+                  </div>
+
+                  {/* History Timeline */}
+                  {history.length > 0 && (
+                    <div className="space-y-2 border-t border-mist-200 pt-3">
+                      <h4 className="text-xs font-bold text-ink-900 uppercase tracking-wide">Status History Log</h4>
+                      <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
+                        {history.map((h) => (
+                          <div key={h.id} className="text-xs border-l-2 border-river-600 pl-2 space-y-0.5">
+                            <div className="flex items-center justify-between text-ink-900 font-medium">
+                              <span>{h.oldStatus} → {h.newStatus}</span>
+                              <span className="text-[10px] text-ink-400 font-mono">
+                                {new Date(h.changedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-ink-600">{h.reason}</p>
+                            <p className="text-[10px] text-ink-400">By: {h.changedByName}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
 
           {/* Action Footer for Moderator / Admin */}

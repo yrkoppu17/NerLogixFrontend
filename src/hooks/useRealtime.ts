@@ -1,43 +1,49 @@
 import { useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { apiBaseUrl, isJwtExpired } from '../api/axios';
+import { fetchEventSource } from '@microsoft/fetch-event-source';
 
 export function useRealtime(onEvent?: (event: string, data: unknown) => void) {
   const { user } = useAuth();
 
   useEffect(() => {
     const accessToken = localStorage.getItem('accessToken');
-    if (!accessToken || !user) return;
+    if (!accessToken || !user || isJwtExpired(accessToken)) return;
 
-    // Use EventSource with query param token fallback for SSE
-    const url = `/api/realtime/stream?token=${encodeURIComponent(accessToken)}`;
-    const eventSource = new EventSource(url);
+    const controller = new AbortController();
 
-    const eventNames = [
-      'vehicle.update',
-      'alert.created',
-      'alert.updated',
-      'shipment.updated',
-      'incident.created',
-      'incident.updated',
-      'road.updated',
-      'notification.created',
-      'emergency.changed',
-      'weather.updated'
-    ];
-
-    eventNames.forEach(eventName => {
-      eventSource.addEventListener(eventName, (e: MessageEvent) => {
-        try {
-          const parsedData = JSON.parse(e.data);
-          onEvent?.(eventName, parsedData);
-        } catch {
-          onEvent?.(eventName, e.data);
+    fetchEventSource(`${apiBaseUrl}/realtime/stream`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: 'text/event-stream',
+      },
+      signal: controller.signal,
+      onopen: async (response) => {
+        if (!response.ok || !response.headers.get('content-type')?.includes('text/event-stream')) {
+          if (response.status === 401 || response.status === 403) {
+            controller.abort();
+          }
         }
-      });
-    });
+      },
+      onmessage: (event) => {
+        if (event.event && onEvent) {
+          try {
+            const parsedData = JSON.parse(event.data);
+            onEvent(event.event, parsedData);
+          } catch {
+            onEvent(event.event, event.data);
+          }
+        }
+      },
+      onerror: (err) => {
+        if (controller.signal.aborted) return;
+        throw err;
+      },
+    }).catch(() => {});
 
     return () => {
-      eventSource.close();
+      controller.abort();
     };
   }, [user, onEvent]);
 }

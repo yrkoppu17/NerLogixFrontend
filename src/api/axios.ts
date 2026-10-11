@@ -67,7 +67,18 @@ api.interceptors.request.use(
 )
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // If response is HTML instead of expected JSON (e.g. from an SPA static fallback), reject it
+    if (
+      typeof response.data === 'string' &&
+      (response.data.trim().startsWith('<!DOCTYPE html') ||
+        response.data.trim().startsWith('<html') ||
+        String(response.headers?.['content-type'] || '').includes('text/html'))
+    ) {
+      return Promise.reject(new Error(`API received HTML instead of JSON from endpoint ${response.config.url}`))
+    }
+    return response
+  },
   async (error) => {
     const originalRequest = error.config
 

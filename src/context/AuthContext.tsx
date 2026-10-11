@@ -29,7 +29,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const savedUser = localStorage.getItem('user')
     return savedUser ? JSON.parse(savedUser) : null
   })
-  const [isLoading, setIsLoading] = useState<boolean>(() => !localStorage.getItem('accessToken'))
+  const [isLoading, setIsLoading] = useState<boolean>(() => !!localStorage.getItem('accessToken'))
 
   useEffect(() => {
     const token = localStorage.getItem('accessToken')
