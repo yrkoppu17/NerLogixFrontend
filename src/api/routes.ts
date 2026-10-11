@@ -20,6 +20,9 @@ export interface RouteOptionDto {
   segmentIds: number[];
   segmentNames: string[];
   isEmergencyOptimized: boolean;
+  nodeIds?: number[];
+  label?: string;
+  highlights?: string[];
 }
 
 export const planRoutes = async (req: RoutePlanRequest): Promise<RouteOptionDto[]> => {

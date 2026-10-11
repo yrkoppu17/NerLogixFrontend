@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getShipments, createShipment, assignShipment, startShipment, deliverShipment, cancelShipment, Shipment } from '../api/shipments';
 import { getVehicles } from '../api/vehicles';
@@ -9,6 +10,7 @@ import { GoogleMapEmbed } from '../components/GoogleMapEmbed';
 
 export const ShipmentsPage: React.FC = () => {
   const { user } = useAuth();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const isModeratorOrAdmin = user?.role === 'MODERATOR' || user?.role === 'ADMIN';
 
@@ -49,6 +51,19 @@ export const ShipmentsPage: React.FC = () => {
     queryKey: ['vehicles-idle'],
     queryFn: () => getVehicles({ size: 100 }),
   });
+
+  useEffect(() => {
+    if (location.state && (location.state as any).createWithRoute) {
+      const state = location.state as any;
+      setShowCreateModal(true);
+      if (state.originNodeId) setOriginNodeId(state.originNodeId);
+      if (state.destinationNodeId) setDestinationNodeId(state.destinationNodeId);
+      if (state.priority) setPriority(state.priority);
+      if (state.selectedRoute) {
+        setCargoDescription(`Via ${state.selectedRoute.name} (${state.selectedRoute.distanceKm} km)`);
+      }
+    }
+  }, [location.state]);
 
   const createMutation = useMutation({
     mutationFn: createShipment,
