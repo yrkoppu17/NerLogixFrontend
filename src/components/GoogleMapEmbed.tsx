@@ -75,11 +75,11 @@ export const GoogleMapEmbed: React.FC<GoogleMapEmbedProps> = ({
         title={title}
         width="100%"
         height={height}
-        style={{ border: 0 }}
+        style={{ border: 0, height: height || '100%' }}
         loading="lazy"
         allowFullScreen
         src={embedUrl}
-        className="w-full"
+        className="w-full flex-1"
       />
     </div>
   );
