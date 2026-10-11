@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import { api } from '../api/axios'
+import { api, isJwtExpired, clearAuthStorage } from '../api/axios'
 
 export type Role = 'USER' | 'MODERATOR' | 'ADMIN'
 
@@ -34,16 +34,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const token = localStorage.getItem('accessToken')
     if (token) {
+      if (isJwtExpired(token)) {
+        const refreshToken = localStorage.getItem('refreshToken')
+        if (!refreshToken || isJwtExpired(refreshToken)) {
+          clearAuthStorage()
+          setUser(null)
+          setIsLoading(false)
+          return
+        }
+      }
+
       api.get<User>('/auth/me')
         .then((res) => {
           setUser(res.data)
           localStorage.setItem('user', JSON.stringify(res.data))
         })
         .catch(() => {
+          clearAuthStorage()
           setUser(null)
-          localStorage.removeItem('accessToken')
-          localStorage.removeItem('refreshToken')
-          localStorage.removeItem('user')
         })
         .finally(() => setIsLoading(false))
     } else {

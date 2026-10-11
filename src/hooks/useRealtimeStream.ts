@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
-import { apiBaseUrl } from '../api/axios';
+import { apiBaseUrl, isJwtExpired } from '../api/axios';
 
 export function useRealtimeStream() {
   const { user } = useAuth();
@@ -11,7 +11,7 @@ export function useRealtimeStream() {
   const token = localStorage.getItem('accessToken');
 
   useEffect(() => {
-    if (!token || !user) {
+    if (!token || !user || isJwtExpired(token)) {
       setIsConnected(false);
       return;
     }
@@ -24,13 +24,18 @@ export function useRealtimeStream() {
           method: 'GET',
           headers: {
             Authorization: `Bearer ${token}`,
+            Accept: 'text/event-stream',
           },
           signal: controller.signal,
           onopen: async (response) => {
-            if (response.ok) {
+            if (response.ok && response.headers.get('content-type')?.includes('text/event-stream')) {
               setIsConnected(true);
             } else {
               setIsConnected(false);
+              if (response.status === 401 || response.status === 403) {
+                // Token invalid or expired: abort immediately to prevent infinite retry loops
+                controller.abort();
+              }
             }
           },
           onmessage: (event) => {
@@ -67,8 +72,10 @@ export function useRealtimeStream() {
           },
           onerror: (err) => {
             setIsConnected(false);
-            console.error('SSE Connection error:', err);
-            // Throwing error allows fetchEventSource to attempt retry
+            if (controller.signal.aborted) {
+              return;
+            }
+            // Allow fetchEventSource to retry with default backoff unless aborted
             throw err;
           },
           onclose: () => {
