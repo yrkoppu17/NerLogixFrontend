@@ -22,6 +22,7 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const recentToastsRef = React.useRef<Map<string, number>>(new Map());
 
   const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -29,8 +30,31 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const toast = useCallback(
     (message: string, type: ToastType = 'info', duration: number = 4000) => {
-      const id = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-      setToasts((prev) => [...prev, { id, type, message }]);
+      const now = Date.now();
+      const dedupKey = `${type}:${message.trim()}`;
+      const lastShown = recentToastsRef.current.get(dedupKey);
+
+      // De-duplicate if identical message was fired within last 3 seconds
+      if (lastShown && now - lastShown < 3000) {
+        return;
+      }
+      recentToastsRef.current.set(dedupKey, now);
+
+      // Cleanup old keys from dedup cache
+      if (recentToastsRef.current.size > 50) {
+        recentToastsRef.current.forEach((time, key) => {
+          if (now - time > 10000) {
+            recentToastsRef.current.delete(key);
+          }
+        });
+      }
+
+      const id = `${now}-${Math.random().toString(36).substring(2, 7)}`;
+      setToasts((prev) => {
+        const next = [...prev, { id, type, message }];
+        // Limit to max 4 concurrent toasts
+        return next.length > 4 ? next.slice(-4) : next;
+      });
 
       if (duration > 0) {
         setTimeout(() => {

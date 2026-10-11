@@ -23,7 +23,7 @@ const getNormalizedBaseUrl = (): string => {
 
   // Local development / preview
   if (!envUrl) {
-    return prodFallback;
+    return isLocalhost ? '/api' : prodFallback;
   }
   const clean = envUrl.endsWith('/') ? envUrl.slice(0, -1) : envUrl;
   if (clean.startsWith('http://') || clean.startsWith('https://')) {

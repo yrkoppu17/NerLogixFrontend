@@ -4,20 +4,8 @@ import { VehiclePositionUpdate, ShipmentEventData, DispatchEventData, IncidentEv
 type ToastFn = (msg: string, type?: 'success' | 'error' | 'info' | 'warning', duration?: number) => void;
 
 export function createEventHandlerMap(queryClient: QueryClient, toast?: ToastFn) {
-  const broadcastChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('nerlogix_sync') : null;
-
-  const notifyOtherTabs = (event: string, data: unknown) => {
-    try {
-      broadcastChannel?.postMessage({ event, data, timestamp: Date.now() });
-    } catch {
-      // Ignore broadcast errors
-    }
-  };
-
   return {
     handleEvent: (event: string, data: unknown) => {
-      notifyOtherTabs(event, data);
-
       switch (event) {
         case 'vehicles.positions': {
           const updates = Array.isArray(data) ? (data as VehiclePositionUpdate[]) : [data as VehiclePositionUpdate];
@@ -197,12 +185,44 @@ export function createEventHandlerMap(queryClient: QueryClient, toast?: ToastFn)
           break;
         }
 
-        case 'alert.created': {
+        case 'road.updated': {
+          queryClient.invalidateQueries({ queryKey: ['roads'] });
+          queryClient.invalidateQueries({ queryKey: ['map'] });
+          queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+          break;
+        }
+
+        case 'alert.created':
+        case 'alert.updated': {
           const alt = data as AlertEventData;
           queryClient.invalidateQueries({ queryKey: ['alerts'] });
           queryClient.invalidateQueries({ queryKey: ['notifications'] });
+          if (toast && alt?.message) {
+            toast(`Alert: ${alt.message}`, 'error');
+          }
+          break;
+        }
+
+        case 'notification.created': {
+          queryClient.invalidateQueries({ queryKey: ['notifications'] });
           if (toast) {
-            toast(`Alert: ${alt.message || 'New notification received'}`, 'error');
+            toast('New notification received', 'info');
+          }
+          break;
+        }
+
+        case 'district.updated': {
+          queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+          queryClient.invalidateQueries({ queryKey: ['weather'] });
+          break;
+        }
+
+        case 'emergency.changed': {
+          queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+          queryClient.invalidateQueries({ queryKey: ['emergency'] });
+          queryClient.invalidateQueries({ queryKey: ['alerts'] });
+          if (toast) {
+            toast('Emergency status updated', 'warning');
           }
           break;
         }
