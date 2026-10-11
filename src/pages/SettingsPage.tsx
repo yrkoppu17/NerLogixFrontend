@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { api } from '../api/axios';
+import { api, getErrorMessage } from '../api/axios';
 import { getMyVehicles, registerMyVehicle, deleteMyVehicle, Vehicle } from '../api/vehicles';
 import { Lock, Globe, ShieldAlert, Truck, Plus, Trash2 } from 'lucide-react';
 
@@ -66,7 +66,7 @@ export const SettingsPage: React.FC = () => {
       success('Vehicle registered successfully');
     },
     onError: (err: any) => {
-      toastError(err?.response?.data?.message || 'Failed to register vehicle');
+      toastError(getErrorMessage(err));
     },
   });
 
@@ -78,7 +78,7 @@ export const SettingsPage: React.FC = () => {
       success('Vehicle removed');
     },
     onError: (err: any) => {
-      toastError(err?.response?.data?.message || 'Failed to delete vehicle');
+      toastError(getErrorMessage(err));
     },
   });
 
@@ -88,8 +88,8 @@ export const SettingsPage: React.FC = () => {
     try {
       await updateProfile({ name, language });
       setProfileMsg({ type: 'success', text: 'Profile updated successfully.' });
-    } catch {
-      setProfileMsg({ type: 'error', text: 'Failed to update profile.' });
+    } catch (err: unknown) {
+      setProfileMsg({ type: 'error', text: getErrorMessage(err) });
     }
   };
 
@@ -107,10 +107,7 @@ export const SettingsPage: React.FC = () => {
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: unknown) {
-      const msg = err && typeof err === 'object' && 'response' in err
-        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
-        : 'Failed to change password.';
-      setPasswordMsg({ type: 'error', text: msg || 'Failed to change password.' });
+      setPasswordMsg({ type: 'error', text: getErrorMessage(err) });
     }
   };
 

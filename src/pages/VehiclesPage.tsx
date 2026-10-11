@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getVehicles, createVehicle, deleteVehicle, getVehicleTrail, Vehicle, VehiclePosition } from '../api/vehicles';
+import { getErrorMessage } from '../api/axios';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { Truck, Plus, RefreshCw, X, MapPin } from 'lucide-react';
 import { GoogleMapEmbed } from '../components/GoogleMapEmbed';
 
 export const VehiclesPage: React.FC = () => {
   const { user } = useAuth();
+  const { success, error: toastError } = useToast();
   const queryClient = useQueryClient();
   const isModeratorOrAdmin = user?.role === 'MODERATOR' || user?.role === 'ADMIN';
 
@@ -23,7 +26,7 @@ export const VehiclesPage: React.FC = () => {
   const [lat, setLat] = useState('26.1445');
   const [lng, setLng] = useState('91.7362');
 
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isLoading, isError, error: queryError, refetch } = useQuery({
     queryKey: ['vehicles', statusFilter, typeFilter, search],
     queryFn: () => getVehicles({ status: statusFilter, type: typeFilter, q: search }),
   });
@@ -31,17 +34,21 @@ export const VehiclesPage: React.FC = () => {
   const createMutation = useMutation({
     mutationFn: createVehicle,
     onSuccess: () => {
+      success('Vehicle created successfully');
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
       setShowAddModal(false);
       setRegNo('');
     },
+    onError: (err) => toastError(getErrorMessage(err)),
   });
 
   const deleteMutation = useMutation({
     mutationFn: deleteVehicle,
     onSuccess: () => {
+      success('Vehicle removed');
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
     },
+    onError: (err) => toastError(getErrorMessage(err)),
   });
 
   const handleAddSubmit = (e: React.FormEvent) => {
@@ -128,7 +135,9 @@ export const VehiclesPage: React.FC = () => {
       {isLoading ? (
         <div className="text-center py-12 text-ink-600">Loading vehicle fleet...</div>
       ) : isError ? (
-        <div className="text-center py-12 text-rust-600">Failed to load vehicles. <button onClick={() => refetch()} className="underline">Retry</button></div>
+        <div className="text-center py-12 text-rust-600">
+          {getErrorMessage(queryError)} <button onClick={() => refetch()} className="underline ml-2">Retry</button>
+        </div>
       ) : data?.content.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-xl border border-mist-200 text-ink-600">No vehicles found.</div>
       ) : (

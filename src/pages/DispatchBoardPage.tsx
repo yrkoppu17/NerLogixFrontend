@@ -8,6 +8,7 @@ import {
   DispatchAssignment,
 } from '../api/dispatch';
 import { useToast } from '../context/ToastContext';
+import { getErrorMessage } from '../api/axios';
 import {
   Compass,
   Truck,
@@ -47,7 +48,7 @@ export const DispatchBoardPage: React.FC = () => {
       setSelectedShipment(null);
     },
     onError: (err: any) => {
-      toastError(err?.response?.data?.message || 'Failed to assign shipment');
+      toastError(getErrorMessage(err));
     },
   });
 

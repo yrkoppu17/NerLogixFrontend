@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getRoads, updateRoadStatus, RoadSegmentDto, RoadParams } from '../api/roads';
+import { getErrorMessage } from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { Search, AlertTriangle } from 'lucide-react';
 
@@ -23,7 +24,7 @@ export const RoadsPage: React.FC = () => {
   const [reason, setReason] = useState('');
   const [updateError, setUpdateError] = useState<string | null>(null);
 
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isLoading, isError, error: queryError, refetch } = useQuery({
     queryKey: ['roads', params],
     queryFn: () => getRoads(params)
   });
@@ -38,8 +39,7 @@ export const RoadsPage: React.FC = () => {
       setUpdateError(null);
     },
     onError: (err: unknown) => {
-      const errorObj = err as { response?: { data?: { message?: string } } };
-      setUpdateError(errorObj.response?.data?.message || 'Failed to update road status');
+      setUpdateError(getErrorMessage(err));
     }
   });
 
@@ -189,7 +189,7 @@ export const RoadsPage: React.FC = () => {
         ) : isError ? (
           <div className="p-8 text-center text-rust-600 flex flex-col items-center gap-2">
             <AlertTriangle className="w-8 h-8" />
-            <p>Failed to load roads data.</p>
+            <p>{getErrorMessage(queryError)}</p>
             <button
               onClick={() => refetch()}
               className="mt-2 px-4 py-1.5 bg-river-600 text-white rounded-lg text-sm font-medium"

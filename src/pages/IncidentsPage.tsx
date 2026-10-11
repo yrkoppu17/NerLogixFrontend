@@ -2,12 +2,15 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getIncidents, resolveIncident, getIncidentEvents, getIncidentHistoryTimeline, Incident, IncidentEvent } from '../api/incidents';
 import { getFieldReports, verifyFieldReport, rejectFieldReport, FieldReport } from '../api/fieldReports';
+import { getErrorMessage } from '../api/axios';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { ShieldAlert, RefreshCw, CheckCircle2, XCircle, FileText, Image as ImageIcon, History, MapPin } from 'lucide-react';
 import { GoogleMapEmbed } from '../components/GoogleMapEmbed';
 
 export const IncidentsPage: React.FC = () => {
   const { user } = useAuth();
+  const { success, error: toastError } = useToast();
   const queryClient = useQueryClient();
   const isModeratorOrAdmin = user?.role === 'MODERATOR' || user?.role === 'ADMIN';
 
@@ -40,24 +43,30 @@ export const IncidentsPage: React.FC = () => {
   const verifyMutation = useMutation({
     mutationFn: (vars: { id: number; note?: string }) => verifyFieldReport(vars.id, vars.note),
     onSuccess: () => {
+      success('Field report verified and incident created');
       queryClient.invalidateQueries({ queryKey: ['field-reports'] });
       queryClient.invalidateQueries({ queryKey: ['incidents'] });
     },
+    onError: (err) => toastError(getErrorMessage(err)),
   });
 
   const rejectMutation = useMutation({
     mutationFn: (vars: { id: number; note?: string }) => rejectFieldReport(vars.id, vars.note),
     onSuccess: () => {
+      success('Field report rejected');
       queryClient.invalidateQueries({ queryKey: ['field-reports'] });
     },
+    onError: (err) => toastError(getErrorMessage(err)),
   });
 
   const resolveMutation = useMutation({
     mutationFn: (vars: { id: number; note?: string }) => resolveIncident(vars.id, vars.note),
     onSuccess: () => {
+      success('Incident resolved');
       queryClient.invalidateQueries({ queryKey: ['incidents'] });
       queryClient.invalidateQueries({ queryKey: ['incident-timeline'] });
     },
+    onError: (err) => toastError(getErrorMessage(err)),
   });
 
   const handleViewEvents = async (inc: Incident) => {

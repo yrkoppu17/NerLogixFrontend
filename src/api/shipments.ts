@@ -57,7 +57,22 @@ export const getShipments = async (params?: {
   size?: number;
 }): Promise<ShipmentPageResponse> => {
   const res = await api.get('/shipments', { params });
-  return res.data;
+  if (Array.isArray(res.data)) {
+    return {
+      content: res.data,
+      page: 0,
+      size: res.data.length,
+      totalElements: res.data.length,
+      totalPages: 1,
+    };
+  }
+  return {
+    content: res.data?.content || [],
+    page: res.data?.number ?? res.data?.page ?? 0,
+    size: res.data?.size ?? 20,
+    totalElements: res.data?.totalElements ?? (res.data?.content?.length || 0),
+    totalPages: res.data?.totalPages ?? 1,
+  };
 };
 
 export const getShipmentById = async (id: number): Promise<Shipment> => {

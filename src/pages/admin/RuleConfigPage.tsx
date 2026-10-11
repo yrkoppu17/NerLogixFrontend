@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getRuleConfigs, updateRuleConfig, RuleConfigItem } from '../../api/admin';
+import { getErrorMessage } from '../../api/axios';
+import { useToast } from '../../context/ToastContext';
 import { Sliders, RefreshCw, Save } from 'lucide-react';
 
 export const RuleConfigPage: React.FC = () => {
+  const { success, error: toastError } = useToast();
   const queryClient = useQueryClient();
   const [editingValues, setEditingValues] = useState<Record<string, string>>({});
 
@@ -14,7 +17,11 @@ export const RuleConfigPage: React.FC = () => {
 
   const updateMutation = useMutation({
     mutationFn: ({ key, value }: { key: string; value: string }) => updateRuleConfig(key, value),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-rules'] }),
+    onSuccess: () => {
+      success('Rule configuration saved');
+      queryClient.invalidateQueries({ queryKey: ['admin-rules'] });
+    },
+    onError: (err) => toastError(getErrorMessage(err)),
   });
 
   return (

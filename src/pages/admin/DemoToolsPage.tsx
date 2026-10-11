@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { triggerDemoRain, resetDemoData } from '../../api/admin';
+import { getErrorMessage } from '../../api/axios';
+import { useToast } from '../../context/ToastContext';
 import { getMapDistricts, MapDistrictDto } from '../../api/map';
 import { CloudRain, RefreshCw, Wrench } from 'lucide-react';
 
 export const DemoToolsPage: React.FC = () => {
+  const { success, error: toastError } = useToast();
   const [selectedDistrictId, setSelectedDistrictId] = useState<number>(1);
   const [condition, setCondition] = useState<string>('HEAVY');
 
@@ -16,15 +19,17 @@ export const DemoToolsPage: React.FC = () => {
   const rainMutation = useMutation({
     mutationFn: () => triggerDemoRain(selectedDistrictId, condition),
     onSuccess: () => {
-      alert(`Demo rain log injected for district! Risk engine recomputed.`);
+      success(`Demo rain log injected for district! Risk engine recomputed.`);
     },
+    onError: (err) => toastError(getErrorMessage(err)),
   });
 
   const resetMutation = useMutation({
     mutationFn: resetDemoData,
     onSuccess: () => {
-      alert(`Demo dataset reset to initial seed values!`);
+      success(`Demo dataset reset to initial seed values!`);
     },
+    onError: (err) => toastError(getErrorMessage(err)),
   });
 
   return (

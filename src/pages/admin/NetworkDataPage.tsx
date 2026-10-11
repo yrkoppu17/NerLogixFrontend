@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Database, Edit2, Check, X } from 'lucide-react'
-import api from '../../api/axios'
+import api, { getErrorMessage } from '../../api/axios'
+import { useToast } from '../../context/ToastContext'
 
 interface DistrictItem {
   id: number
@@ -29,6 +30,7 @@ interface RoadSegmentItem {
 
 export const NetworkDataPage: React.FC = () => {
   const queryClient = useQueryClient()
+  const { success, error: toastError } = useToast()
   const [activeTab, setActiveTab] = useState<'districts' | 'roads'>('districts')
 
   const [editingDistrict, setEditingDistrict] = useState<DistrictItem | null>(null)
@@ -65,9 +67,11 @@ export const NetworkDataPage: React.FC = () => {
       await api.put(`/admin/districts/${payload.id}`, payload.data)
     },
     onSuccess: () => {
+      success('District updated successfully')
       queryClient.invalidateQueries({ queryKey: ['admin-districts'] })
       setEditingDistrict(null)
     },
+    onError: (err) => toastError(getErrorMessage(err)),
   })
 
   const updateRoadMutation = useMutation({
@@ -75,9 +79,11 @@ export const NetworkDataPage: React.FC = () => {
       await api.put(`/admin/roads/${payload.id}`, payload.data)
     },
     onSuccess: () => {
+      success('Road segment updated successfully')
       queryClient.invalidateQueries({ queryKey: ['admin-roads'] })
       setEditingRoad(null)
     },
+    onError: (err) => toastError(getErrorMessage(err)),
   })
 
   const handleEditDistrict = (d: DistrictItem) => {

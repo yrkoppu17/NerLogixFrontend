@@ -6,7 +6,8 @@ import { useAuth } from '../context/AuthContext'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { GoogleMapEmbed } from '../components/GoogleMapEmbed'
 import { getShipments } from '../api/shipments'
-import api from '../api/axios'
+import api, { getErrorMessage } from '../api/axios'
+import { useToast } from '../context/ToastContext'
 
 const COLORS = ['#2F8F5B', '#D98A00', '#C6403A']
 
@@ -23,6 +24,7 @@ interface SupplyItem {
 
 export const Dashboard: React.FC = () => {
   const { user } = useAuth()
+  const { success, error: toastError } = useToast()
   const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState<'kpis' | 'districts' | 'supply'>('kpis')
   const [selectedDistrictMap, setSelectedDistrictMap] = useState<{ name: string; state: string } | null>(null)
@@ -97,8 +99,10 @@ export const Dashboard: React.FC = () => {
       await api.post('/settings/emergency', { enabled })
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
+      success('Emergency mode toggled');
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
     },
+    onError: (err) => toastError(getErrorMessage(err)),
   })
 
   // Update Stock Mutation
@@ -114,10 +118,12 @@ export const Dashboard: React.FC = () => {
       })
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dashboard-supply'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
-      setEditingStock(null)
+      success('District stock updated');
+      queryClient.invalidateQueries({ queryKey: ['dashboard-supply'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      setEditingStock(null);
     },
+    onError: (err) => toastError(getErrorMessage(err)),
   })
 
   const myActiveShipment = myShipments?.content?.[0]

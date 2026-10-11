@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getApiKeys, createApiKey, deleteApiKey, ApiKeyItem } from '../../api/admin';
+import { getErrorMessage } from '../../api/axios';
+import { useToast } from '../../context/ToastContext';
 import { Key, Trash2, Plus, Copy, Check } from 'lucide-react';
 
 export const ApiKeysPage: React.FC = () => {
+  const { success, error: toastError } = useToast();
   const queryClient = useQueryClient();
   const [newKeyName, setNewKeyName] = useState<string>('');
   const [generatedRawKey, setGeneratedRawKey] = useState<string | null>(null);
@@ -19,13 +22,19 @@ export const ApiKeysPage: React.FC = () => {
     onSuccess: (data) => {
       setGeneratedRawKey(data.apiKey);
       setNewKeyName('');
+      success('API Key generated');
       queryClient.invalidateQueries({ queryKey: ['admin-api-keys'] });
     },
+    onError: (err) => toastError(getErrorMessage(err)),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => deleteApiKey(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-api-keys'] }),
+    onSuccess: () => {
+      success('API Key revoked');
+      queryClient.invalidateQueries({ queryKey: ['admin-api-keys'] });
+    },
+    onError: (err) => toastError(getErrorMessage(err)),
   });
 
   const handleCopy = () => {

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getDistrictWeatherList, logWeather, triggerDemoRain } from '../api/weather';
+import { getErrorMessage } from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { CloudRain, CloudLightning, Sun, Cloud, AlertCircle, Plus, Zap, CheckCircle2, MapPin } from 'lucide-react';
 import { GoogleMapEmbed } from '../components/GoogleMapEmbed';
@@ -23,7 +24,7 @@ export const WeatherPage: React.FC = () => {
   const [demoCondition, setDemoCondition] = useState<'NONE' | 'LIGHT' | 'MODERATE' | 'HEAVY' | 'EXTREME'>('EXTREME');
   const [demoSuccess, setDemoSuccess] = useState<string | null>(null);
 
-  const { data: weatherList = [], isLoading, isError, refetch } = useQuery({
+  const { data: weatherList = [], isLoading, isError, error: queryError, refetch } = useQuery({
     queryKey: ['weatherList'],
     queryFn: getDistrictWeatherList
   });
@@ -38,8 +39,7 @@ export const WeatherPage: React.FC = () => {
       setSubmitError(null);
     },
     onError: (err: unknown) => {
-      const errorObj = err as { response?: { data?: { message?: string } } };
-      setSubmitError(errorObj.response?.data?.message || 'Failed to submit weather log');
+      setSubmitError(getErrorMessage(err));
     }
   });
 
@@ -53,7 +53,7 @@ export const WeatherPage: React.FC = () => {
       setTimeout(() => setDemoSuccess(null), 15000);
     },
     onError: (err: unknown) => {
-      console.error('Demo rain simulation error:', err);
+      setDemoSuccess(`Simulation failed: ${getErrorMessage(err)}`);
     }
   });
 
@@ -227,7 +227,7 @@ export const WeatherPage: React.FC = () => {
       ) : isError ? (
         <div className="p-8 text-center text-rust-600 flex flex-col items-center gap-2">
           <AlertCircle className="w-8 h-8" />
-          <p>Failed to load weather data.</p>
+          <p>{getErrorMessage(queryError)}</p>
           <button onClick={() => refetch()} className="px-4 py-1.5 bg-river-600 text-white rounded-lg text-xs font-medium">
             Retry
           </button>

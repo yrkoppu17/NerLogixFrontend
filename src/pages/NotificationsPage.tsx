@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getNotifications, markNotificationRead, markAllNotificationsRead, broadcastNotification, NotificationItem } from '../api/notifications';
+import { getErrorMessage } from '../api/axios';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { Bell, CheckCheck, RefreshCw, Send, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 export const NotificationsPage: React.FC = () => {
   const { user } = useAuth();
+  const { success, error: toastError } = useToast();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const isModeratorOrAdmin = user?.role === 'MODERATOR' || user?.role === 'ADMIN';
@@ -21,7 +24,7 @@ export const NotificationsPage: React.FC = () => {
   const [bBnTitle, setBBnTitle] = useState('');
   const [bBnMsg, setBBnMsg] = useState('');
 
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isLoading, isError, error: queryError, refetch } = useQuery({
     queryKey: ['notifications'],
     queryFn: () => getNotifications({ size: 50 }),
   });
@@ -42,21 +45,28 @@ export const NotificationsPage: React.FC = () => {
   const markReadMutation = useMutation({
     mutationFn: markNotificationRead,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+    onError: (err) => toastError(getErrorMessage(err)),
   });
 
   const markAllReadMutation = useMutation({
     mutationFn: markAllNotificationsRead,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+    onSuccess: () => {
+      success('All notifications marked as read');
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+    onError: (err) => toastError(getErrorMessage(err)),
   });
 
   const broadcastMutation = useMutation({
     mutationFn: (vars: { titles: Record<string, string>; messages: Record<string, string> }) =>
       broadcastNotification(vars.titles, vars.messages),
     onSuccess: () => {
+      success('Notification broadcasted');
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       setShowBroadcastModal(false);
       resetBroadcastForm();
     },
+    onError: (err) => toastError(getErrorMessage(err)),
   });
 
   const resetBroadcastForm = () => {
@@ -126,7 +136,9 @@ export const NotificationsPage: React.FC = () => {
       {isLoading ? (
         <div className="text-center py-12 text-ink-600">Loading notifications...</div>
       ) : isError ? (
-        <div className="text-center py-12 text-rust-600">Failed to load notifications. <button onClick={() => refetch()} className="underline">Retry</button></div>
+        <div className="text-center py-12 text-rust-600">
+          {getErrorMessage(queryError)} <button onClick={() => refetch()} className="underline ml-2">Retry</button>
+        </div>
       ) : data?.content.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-xl border border-mist-200 text-ink-600">No notifications.</div>
       ) : (

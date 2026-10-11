@@ -4,12 +4,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getShipments, createShipment, assignShipment, startShipment, deliverShipment, cancelShipment, Shipment } from '../api/shipments';
 import { getVehicles } from '../api/vehicles';
 import { getMapLocations, RoadNodeDto } from '../api/map';
+import { getErrorMessage } from '../api/axios';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { Plus, RefreshCw, X, Play, CheckCircle2, Truck, User as UserIcon, MapPin } from 'lucide-react';
 import { GoogleMapEmbed } from '../components/GoogleMapEmbed';
 
 export const ShipmentsPage: React.FC = () => {
   const { user } = useAuth();
+  const { success, error: toastError } = useToast();
   const location = useLocation();
   const queryClient = useQueryClient();
   const isModeratorOrAdmin = user?.role === 'MODERATOR' || user?.role === 'ADMIN';
@@ -37,7 +40,7 @@ export const ShipmentsPage: React.FC = () => {
   const [assignVehicleId, setAssignVehicleId] = useState<number | ''>('');
   const [assignDriverUserId, setAssignDriverUserId] = useState<number | ''>(user?.id || '');
 
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isLoading, isError, error: queryError, refetch } = useQuery({
     queryKey: ['shipments', statusFilter, categoryFilter, priorityFilter, search],
     queryFn: () => getShipments({ status: statusFilter, cargoCategory: categoryFilter, priority: priorityFilter, q: search }),
   });
@@ -68,34 +71,50 @@ export const ShipmentsPage: React.FC = () => {
   const createMutation = useMutation({
     mutationFn: createShipment,
     onSuccess: () => {
+      success('Shipment created successfully');
       queryClient.invalidateQueries({ queryKey: ['shipments'] });
       setShowCreateModal(false);
       resetForm();
     },
+    onError: (err) => toastError(getErrorMessage(err)),
   });
 
   const assignMutation = useMutation({
     mutationFn: (vars: { id: number; vehicleId: number; driverUserId: number }) =>
       assignShipment(vars.id, vars.vehicleId, vars.driverUserId),
     onSuccess: () => {
+      success('Shipment assigned');
       queryClient.invalidateQueries({ queryKey: ['shipments'] });
       setAssignModalShipment(null);
     },
+    onError: (err) => toastError(getErrorMessage(err)),
   });
 
   const startMutation = useMutation({
     mutationFn: startShipment,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['shipments'] }),
+    onSuccess: () => {
+      success('Shipment transit started');
+      queryClient.invalidateQueries({ queryKey: ['shipments'] });
+    },
+    onError: (err) => toastError(getErrorMessage(err)),
   });
 
   const deliverMutation = useMutation({
     mutationFn: deliverShipment,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['shipments'] }),
+    onSuccess: () => {
+      success('Shipment marked as delivered');
+      queryClient.invalidateQueries({ queryKey: ['shipments'] });
+    },
+    onError: (err) => toastError(getErrorMessage(err)),
   });
 
   const cancelMutation = useMutation({
     mutationFn: cancelShipment,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['shipments'] }),
+    onSuccess: () => {
+      success('Shipment cancelled');
+      queryClient.invalidateQueries({ queryKey: ['shipments'] });
+    },
+    onError: (err) => toastError(getErrorMessage(err)),
   });
 
   const resetForm = () => {
@@ -230,7 +249,7 @@ export const ShipmentsPage: React.FC = () => {
         </div>
       ) : isError ? (
         <div className="text-center py-12 text-rust-600">
-          Failed to load shipments. <button onClick={() => refetch()} className="underline">Retry</button>
+          {getErrorMessage(queryError)} <button onClick={() => refetch()} className="underline ml-2">Retry</button>
         </div>
       ) : data?.content.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-xl border border-mist-200 text-ink-600">No shipments found.</div>

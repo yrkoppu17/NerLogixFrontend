@@ -205,13 +205,15 @@ api.interceptors.response.use(
           originalRequest.headers['Authorization'] = 'Bearer ' + data.accessToken;
         }
 
-        processQueue(null, data.accessToken);
-        return api(originalRequest);
-      } catch (refreshErr) {
+      } catch (refreshErr: any) {
         processQueue(refreshErr, null);
-        clearAuthStorage();
-        if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
-          window.location.href = '/login';
+        const refreshStatus = refreshErr?.response?.status;
+        // Only clear storage and redirect if the refresh endpoint explicitly returns 400 or 401
+        if (refreshStatus === 400 || refreshStatus === 401) {
+          clearAuthStorage();
+          if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+            window.location.href = '/login';
+          }
         }
         return Promise.reject(refreshErr);
       } finally {
@@ -222,5 +224,32 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+export function getErrorMessage(error: unknown): string {
+  if (!error) return 'An unexpected error occurred';
+  if (typeof error === 'string' && error.trim()) return error.trim();
+
+  if (typeof error === 'object' && error !== null) {
+    const err = error as Record<string, any>;
+    if (err.response?.data) {
+      const data = err.response.data;
+      if (typeof data === 'string' && data.trim()) return data.trim();
+      if (data.message && typeof data.message === 'string' && data.message.trim()) {
+        return data.message.trim();
+      }
+      if (data.error && typeof data.error === 'string' && data.error.trim()) {
+        return data.error.trim();
+      }
+      if (data.details && typeof data.details === 'string' && data.details.trim()) {
+        return data.details.trim();
+      }
+    }
+    if (err.message && typeof err.message === 'string' && err.message.trim()) {
+      return err.message.trim();
+    }
+  }
+
+  return 'An unexpected error occurred';
+}
 
 export default api;

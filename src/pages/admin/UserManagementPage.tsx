@@ -1,35 +1,47 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getUsers, updateUserRole, updateUserActive, resetUserPassword, UserItem } from '../../api/admin';
+import { getErrorMessage } from '../../api/axios';
+import { useToast } from '../../context/ToastContext';
 import { Users, Key, RefreshCw } from 'lucide-react';
 
 export const UserManagementPage: React.FC = () => {
+  const { success, error: toastError } = useToast();
   const queryClient = useQueryClient();
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [newPassword, setNewPassword] = useState<string>('');
 
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isLoading, isError, error: queryError, refetch } = useQuery({
     queryKey: ['admin-users'],
     queryFn: () => getUsers(),
   });
 
   const roleMutation = useMutation({
     mutationFn: ({ userId, role }: { userId: number; role: string }) => updateUserRole(userId, role),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-users'] }),
+    onSuccess: () => {
+      success('User role updated');
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+    },
+    onError: (err) => toastError(getErrorMessage(err)),
   });
 
   const activeMutation = useMutation({
     mutationFn: ({ userId, active }: { userId: number; active: boolean }) => updateUserActive(userId, active),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-users'] }),
+    onSuccess: () => {
+      success('User status updated');
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+    },
+    onError: (err) => toastError(getErrorMessage(err)),
   });
 
   const resetPassMutation = useMutation({
     mutationFn: ({ userId, pass }: { userId: number; pass: string }) => resetUserPassword(userId, pass),
     onSuccess: () => {
-      alert('Password reset successfully!');
+      success('Password reset successfully!');
       setSelectedUserId(null);
       setNewPassword('');
     },
+    onError: (err) => toastError(getErrorMessage(err)),
   });
 
   return (
@@ -47,7 +59,9 @@ export const UserManagementPage: React.FC = () => {
       {isLoading ? (
         <div className="py-12 text-center text-ink-600">Loading user list...</div>
       ) : isError ? (
-        <div className="py-12 text-center text-rust-600">Failed to load users.</div>
+        <div className="py-12 text-center text-rust-600">
+          {getErrorMessage(queryError)} <button onClick={() => refetch()} className="underline ml-2">Retry</button>
+        </div>
       ) : (
         <div className="bg-white rounded-2xl border border-mist-200 overflow-hidden shadow-sm">
           <div className="overflow-x-auto">

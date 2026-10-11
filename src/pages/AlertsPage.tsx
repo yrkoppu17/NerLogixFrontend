@@ -1,30 +1,41 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getAlerts, ackAlert, resolveAlert, AlertItem } from '../api/alerts';
+import { getErrorMessage } from '../api/axios';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { RefreshCw, CheckCircle2 } from 'lucide-react';
 
 export const AlertsPage: React.FC = () => {
   const { user } = useAuth();
+  const { success, error: toastError } = useToast();
   const queryClient = useQueryClient();
   const isModeratorOrAdmin = user?.role === 'MODERATOR' || user?.role === 'ADMIN';
 
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [typeFilter, setTypeFilter] = useState<string>('');
 
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isLoading, isError, error: queryError, refetch } = useQuery({
     queryKey: ['alerts', statusFilter, typeFilter],
     queryFn: () => getAlerts({ status: statusFilter, type: typeFilter }),
   });
 
   const ackMutation = useMutation({
     mutationFn: ackAlert,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['alerts'] }),
+    onSuccess: () => {
+      success('Alert acknowledged');
+      queryClient.invalidateQueries({ queryKey: ['alerts'] });
+    },
+    onError: (err) => toastError(getErrorMessage(err)),
   });
 
   const resolveMutation = useMutation({
     mutationFn: resolveAlert,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['alerts'] }),
+    onSuccess: () => {
+      success('Alert resolved');
+      queryClient.invalidateQueries({ queryKey: ['alerts'] });
+    },
+    onError: (err) => toastError(getErrorMessage(err)),
   });
 
   const parseJsonText = (json: string): string => {
@@ -86,7 +97,9 @@ export const AlertsPage: React.FC = () => {
       {isLoading ? (
         <div className="text-center py-12 text-ink-600">Loading alerts...</div>
       ) : isError ? (
-        <div className="text-center py-12 text-rust-600">Failed to load alerts. <button onClick={() => refetch()} className="underline">Retry</button></div>
+        <div className="text-center py-12 text-rust-600">
+          {getErrorMessage(queryError)} <button onClick={() => refetch()} className="underline ml-2">Retry</button>
+        </div>
       ) : data?.content.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-xl border border-mist-200 text-ink-600">No alerts found.</div>
       ) : (

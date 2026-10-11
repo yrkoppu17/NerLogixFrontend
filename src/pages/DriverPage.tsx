@@ -4,6 +4,7 @@ import { getShipments, startShipment, deliverShipment, getRouteProposal, acceptR
 import { postDriverPosition } from '../api/vehicles';
 import { createIncident } from '../api/incidents';
 import { getPendingAssignments, acceptAssignment, declineAssignment, DispatchAssignment } from '../api/dispatch';
+import { getErrorMessage } from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { Truck, MapPin, Play, CheckCircle, Navigation, RefreshCw, AlertTriangle, ShieldAlert, Sparkles, Check } from 'lucide-react';
@@ -16,7 +17,7 @@ export const DriverPage: React.FC = () => {
   const [gpsActive, setGpsActive] = useState<boolean>(false);
   const [gpsStatusText, setGpsStatusText] = useState<string>('GPS Standby');
 
-  const { data: shipmentsData, isLoading, isError, refetch } = useQuery({
+  const { data: shipmentsData, isLoading, isError, error: queryError, refetch } = useQuery({
     queryKey: ['driver-shipments', user?.id],
     queryFn: () => getShipments({ driverUserId: user?.id, size: 5 }),
     enabled: !!user?.id,
@@ -38,7 +39,7 @@ export const DriverPage: React.FC = () => {
       success(`Accepted shipment ${data.shipmentCode}! Trip ready to start.`);
     },
     onError: (err: any) => {
-      toastError(err?.response?.data?.message || 'Failed to accept assignment');
+      toastError(getErrorMessage(err));
     },
   });
 
@@ -50,7 +51,7 @@ export const DriverPage: React.FC = () => {
       success('Assignment declined.');
     },
     onError: (err: any) => {
-      toastError(err?.response?.data?.message || 'Failed to decline assignment');
+      toastError(getErrorMessage(err));
     },
   });
 
@@ -67,30 +68,38 @@ export const DriverPage: React.FC = () => {
   const startMutation = useMutation({
     mutationFn: startShipment,
     onSuccess: () => {
+      success('Trip started');
       queryClient.invalidateQueries({ queryKey: ['driver-shipments'] });
     },
+    onError: (err) => toastError(getErrorMessage(err)),
   });
 
   const deliverMutation = useMutation({
     mutationFn: deliverShipment,
     onSuccess: () => {
+      success('Shipment delivered');
       queryClient.invalidateQueries({ queryKey: ['driver-shipments'] });
     },
+    onError: (err) => toastError(getErrorMessage(err)),
   });
 
   const acceptProposalMutation = useMutation({
     mutationFn: acceptRouteProposal,
     onSuccess: () => {
+      success('Route proposal accepted');
       refetchProposal();
       queryClient.invalidateQueries({ queryKey: ['driver-shipments'] });
     },
+    onError: (err) => toastError(getErrorMessage(err)),
   });
 
   const rejectProposalMutation = useMutation({
     mutationFn: rejectRouteProposal,
     onSuccess: () => {
+      success('Route proposal rejected');
       refetchProposal();
     },
+    onError: (err) => toastError(getErrorMessage(err)),
   });
 
   const handleToggleGps = () => {
@@ -212,7 +221,13 @@ export const DriverPage: React.FC = () => {
       {/* Main Content */}
       {isLoading ? (
         <div className="text-center py-12 text-ink-600">Loading driver details...</div>
-      ) : isError || !activeShipment ? (
+      ) : isError ? (
+        <div className="bg-white p-8 rounded-2xl border border-mist-200 text-center space-y-3">
+          <AlertTriangle className="w-12 h-12 text-rust-600 mx-auto" />
+          <h3 className="text-lg font-bold text-ink-900">{getErrorMessage(queryError)}</h3>
+          <button onClick={() => refetch()} className="px-4 py-1.5 bg-river-600 text-white rounded-lg text-xs font-medium">Retry</button>
+        </div>
+      ) : !activeShipment ? (
         <div className="bg-white p-8 rounded-2xl border border-mist-200 text-center space-y-3">
           <Truck className="w-12 h-12 text-ink-400 mx-auto" />
           <h3 className="text-lg font-bold text-ink-900">No Active Shipment Assigned</h3>

@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { getMapLocations, RoadNodeDto } from '../api/map'
 import { planRoutes, RouteOptionDto } from '../api/routes'
+import { getErrorMessage } from '../api/axios'
 import { useRealtime } from '../hooks/useRealtime'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import {
   Navigation,
   AlertTriangle,
@@ -21,6 +23,7 @@ import { GoogleDirectionsMap } from '../components/GoogleDirectionsMap'
 export const RoutePlannerPage: React.FC = () => {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { error: toastError } = useToast()
   const isModeratorOrAdmin = user?.role === 'MODERATOR' || user?.role === 'ADMIN'
 
   const [originId, setOriginId] = useState<number | ''>('')
@@ -31,7 +34,7 @@ export const RoutePlannerPage: React.FC = () => {
   const [hoveredOptionIndex, setHoveredOptionIndex] = useState<number | null>(null)
   const [conditionsChanged, setConditionsChanged] = useState<boolean>(false)
 
-  const { data: nodes = [], isLoading: isLoadingNodes, isError: isErrorNodes, refetch: refetchNodes } = useQuery<RoadNodeDto[]>({
+  const { data: nodes = [], isLoading: isLoadingNodes, isError: isErrorNodes, error: errorNodes, refetch: refetchNodes } = useQuery<RoadNodeDto[]>({
     queryKey: ['mapLocations'],
     queryFn: getMapLocations,
   })
@@ -47,6 +50,9 @@ export const RoutePlannerPage: React.FC = () => {
           setSelectedOptionIndex(data[0].optionIndex)
         }
       }
+    },
+    onError: (err) => {
+      toastError(getErrorMessage(err));
     },
   })
 
@@ -118,7 +124,7 @@ export const RoutePlannerPage: React.FC = () => {
               <div className="h-10 bg-mist-100 animate-pulse rounded-control" />
             ) : isErrorNodes ? (
               <div className="flex items-center gap-2 text-xs text-rust-600">
-                <span>Failed to load nodes</span>
+                <span>{getErrorMessage(errorNodes)}</span>
                 <button type="button" onClick={() => refetchNodes()} className="underline font-semibold">Retry</button>
               </div>
             ) : (
@@ -144,7 +150,7 @@ export const RoutePlannerPage: React.FC = () => {
               <div className="h-10 bg-mist-100 animate-pulse rounded-control" />
             ) : isErrorNodes ? (
               <div className="flex items-center gap-2 text-xs text-rust-600">
-                <span>Failed to load nodes</span>
+                <span>{getErrorMessage(errorNodes)}</span>
                 <button type="button" onClick={() => refetchNodes()} className="underline font-semibold">Retry</button>
               </div>
             ) : (
