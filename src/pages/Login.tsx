@@ -82,14 +82,21 @@ export const Login: React.FC = () => {
       }, 1000)
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
-        const status = (err as { response?: { status?: number; data?: { message?: string } } }).response?.status
+        const res = (err as { response?: { status?: number; data?: { message?: string; error?: string } } }).response
+        const status = res?.status
         if (status === 429) {
           setErrorMessage(t('tooManyAttempts'))
+        } else if (status === 401 || status === 400) {
+          setErrorMessage(res?.data?.message || t('invalidCredentials'))
+        } else if (status === 502 || status === 503 || status === 504) {
+          setErrorMessage('Backend service is spinning up or temporarily unavailable. Please retry in a moment.')
         } else {
-          setErrorMessage(t('invalidCredentials'))
+          setErrorMessage(res?.data?.message || t('invalidCredentials'))
         }
+      } else if (err && typeof err === 'object' && 'code' in err && (err as { code?: string }).code === 'ERR_NETWORK') {
+        setErrorMessage('Network error: Unable to connect to backend server. Please check your connection or CORS configuration.')
       } else {
-        setErrorMessage('Failed to sign in. Please check your credentials.')
+        setErrorMessage('Failed to connect to the authentication service. Please retry.')
       }
     }
   }
