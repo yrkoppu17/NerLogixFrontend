@@ -11,9 +11,11 @@ export function useRealtime(onEvent?: (event: string, data: unknown) => void) {
     const eventNames = [
       'vehicles.positions',
       'vehicle.update',
+      'user.registered',
       'shipment.created',
       'shipment.updated',
       'shipment.assigned',
+      'shipment.unassigned',
       'dispatch.assigned',
       'dispatch.accepted',
       'dispatch.declined',

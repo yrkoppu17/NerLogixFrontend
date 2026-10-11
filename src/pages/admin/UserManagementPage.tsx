@@ -3,7 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getUsers, updateUserRole, updateUserActive, resetUserPassword, UserItem } from '../../api/admin';
 import { getErrorMessage } from '../../api/axios';
 import { useToast } from '../../context/ToastContext';
-import { Users, Key, RefreshCw } from 'lucide-react';
+import { useRealtime } from '../../hooks/useRealtime';
+import { Users, Key, RefreshCw, Truck } from 'lucide-react';
 
 export const UserManagementPage: React.FC = () => {
   const { success, error: toastError } = useToast();
@@ -14,6 +15,13 @@ export const UserManagementPage: React.FC = () => {
   const { data, isLoading, isError, error: queryError, refetch } = useQuery({
     queryKey: ['admin-users'],
     queryFn: () => getUsers(),
+  });
+
+  // Automatically refresh when a user registers or updates
+  useRealtime((event) => {
+    if (event === 'user.registered' || event === 'vehicle.update') {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+    }
   });
 
   const roleMutation = useMutation({
@@ -72,6 +80,7 @@ export const UserManagementPage: React.FC = () => {
                   <th className="p-4">Email</th>
                   <th className="p-4">Role</th>
                   <th className="p-4">Status</th>
+                  <th className="p-4">Vehicles</th>
                   <th className="p-4 text-right">Actions</th>
                 </tr>
               </thead>
@@ -102,6 +111,23 @@ export const UserManagementPage: React.FC = () => {
                       >
                         {u.active ? 'ACTIVE' : 'DISABLED'}
                       </button>
+                    </td>
+                    <td className="p-4 font-mono text-xs text-ink-700">
+                      {u.vehicleRegNos && u.vehicleRegNos.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {u.vehicleRegNos.map((reg) => (
+                            <span
+                              key={reg}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 bg-mist-100 text-ink-800 rounded font-semibold text-[11px]"
+                            >
+                              <Truck className="w-3 h-3 text-river-600" />
+                              {reg}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-ink-400 italic">None</span>
+                      )}
                     </td>
                     <td className="p-4 text-right">
                       <button

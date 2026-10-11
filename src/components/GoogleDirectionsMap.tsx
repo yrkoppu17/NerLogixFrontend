@@ -1,11 +1,9 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getGoogleMapsLoader } from '../utils/googleMapsLoader'
-import { Navigation, Clock, MapPin, ChevronRight, ExternalLink, Eye, EyeOff, Layers } from 'lucide-react'
+import { Navigation, Clock, MapPin, ChevronRight, ExternalLink, Eye, EyeOff, AlertCircle } from 'lucide-react'
 import api from '../api/axios'
 import { RouteOptionDto } from '../api/routes'
-import { MapContainer, TileLayer, Polyline, Marker, Popup } from 'react-leaflet'
-import 'leaflet/dist/leaflet.css'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 declare const google: any
@@ -162,6 +160,18 @@ export const GoogleDirectionsMap: React.FC<GoogleDirectionsMapProps> = ({
       // Clean up polylines
       polylinesRef.current.forEach((p) => p.setMap(null))
       polylinesRef.current.clear()
+      if (markersRef.current.origin) {
+        markersRef.current.origin.setMap(null)
+        markersRef.current.origin = undefined
+      }
+      if (markersRef.current.dest) {
+        markersRef.current.dest.setMap(null)
+        markersRef.current.dest = undefined
+      }
+      if (googleDirectionsRendererRef.current) {
+        googleDirectionsRendererRef.current.setMap(null)
+        googleDirectionsRendererRef.current = null
+      }
     }
   }, [apiKey])
 
@@ -305,6 +315,18 @@ export const GoogleDirectionsMap: React.FC<GoogleDirectionsMapProps> = ({
           strokeWeight: 6,
           zIndex: 100,
         })
+        if (googleMapInstance.current && route?.geometry) {
+          try {
+            const coords: [number, number][] = JSON.parse(route.geometry)
+            if (coords.length > 0) {
+              const bounds = new google.maps.LatLngBounds()
+              coords.forEach(([lat, lng]) => bounds.extend({ lat, lng }))
+              googleMapInstance.current.fitBounds(bounds, { top: 40, right: 40, bottom: 40, left: 40 })
+            }
+          } catch {
+            // ignore parse error
+          }
+        }
       } else if (isHovered) {
         polyline.setOptions({
           strokeColor: '#475569',
@@ -453,85 +475,30 @@ export const GoogleDirectionsMap: React.FC<GoogleDirectionsMapProps> = ({
     }
   }, [showGoogleRoute, isGoogleReady, originLat, originLng, destLat, destLng])
 
-  // Fallback: Leaflet Interactive Map when Google API is not loaded or key is missing
+  // When Google API fails to load or API key is not configured:
   if (loadError || !apiKey || apiKey === 'YOUR_GOOGLE_MAPS_API_KEY') {
-    const centerLat = originLat && destLat ? (originLat + destLat) / 2 : 26.2006
-    const centerLng = originLng && destLng ? (originLng + destLng) / 2 : 92.9376
-
     return (
       <div className="space-y-4">
-        <div className="bg-amber-50 border border-amber-200 p-3 rounded-control text-xs text-amber-800 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Layers className="w-4 h-4 text-amber-600 shrink-0" />
-            <span>Interactive OpenStreetMap Routing Active (Google Key Standby)</span>
+        <div className="bg-amber-50 border border-amber-200 p-4 rounded-panel text-amber-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+            <div>
+              <p className="font-semibold text-xs sm:text-sm">Google Maps key not configured - set VITE_GOOGLE_MAPS_API_KEY</p>
+              <p className="text-[11px] text-amber-700">Configure your Google Maps API key in server config or environment to enable interactive road maps.</p>
+            </div>
           </div>
           <a
             href={externalMapUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="px-3 py-1 bg-river-600 text-white rounded text-xs font-semibold hover:bg-river-700 flex items-center gap-1 shrink-0"
+            className="px-3.5 py-2 bg-river-600 text-white rounded-control text-xs font-semibold hover:bg-river-700 flex items-center justify-center gap-1.5 shrink-0 transition shadow-sm"
           >
             <ExternalLink className="w-3.5 h-3.5" />
             Open in Google Maps
           </a>
         </div>
 
-        {/* Leaflet Multi-Route Map */}
-        <div className="bg-white p-3 rounded-panel border border-mist-200 shadow-sm h-[420px] relative">
-          <MapContainer
-            center={[centerLat, centerLng]}
-            zoom={8}
-            style={{ width: '100%', height: '100%', borderRadius: '0.5rem' }}
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-
-            {originLat && originLng && (
-              <Marker position={[originLat, originLng]}>
-                <Popup>Origin: {originName}</Popup>
-              </Marker>
-            )}
-
-            {destLat && destLng && (
-              <Marker position={[destLat, destLng]}>
-                <Popup>Destination: {destName}</Popup>
-              </Marker>
-            )}
-
-            {routes.map((route) => {
-              try {
-                const coords: [number, number][] = JSON.parse(route.geometry)
-                const isSelected = route.optionIndex === selectedOptionIndex
-                const color = isSelected ? getRiskColor(route.riskCategory) : '#94A3B8'
-                const weight = isSelected ? 6 : 4
-                const opacity = isSelected ? 0.95 : 0.45
-
-                return (
-                  <Polyline
-                    key={route.optionIndex}
-                    positions={coords}
-                    pathOptions={{ color, weight, opacity }}
-                    eventHandlers={{
-                      click: () => onSelectOption && onSelectOption(route.optionIndex),
-                    }}
-                  >
-                    <Popup>
-                      <strong>{route.name}</strong> ({route.label})<br />
-                      Distance: {route.distanceKm} km • ETA: {route.etaMinutes} min<br />
-                      Risk: {route.riskCategory} ({route.riskScore})
-                    </Popup>
-                  </Polyline>
-                )
-              } catch {
-                return null
-              }
-            })}
-          </MapContainer>
-        </div>
-
-        {/* Directions Step List */}
+        {/* Directions Step List from backend route info even without Google map rendering */}
         {directions && (
           <div className="bg-white p-4 rounded-panel border border-mist-200 shadow-sm space-y-3">
             <div className="flex items-center justify-between pb-3 border-b border-mist-100">

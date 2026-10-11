@@ -4,6 +4,7 @@ import {
   getDispatchBoard,
   getDispatchCandidates,
   assignShipment,
+  unassignShipment,
   DriverCandidate,
   DispatchAssignment,
 } from '../api/dispatch';
@@ -46,6 +47,18 @@ export const DispatchBoardPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['shipments'] });
       success(`Shipment assigned to driver! Notification dispatched via SSE.`);
       setSelectedShipment(null);
+    },
+    onError: (err: any) => {
+      toastError(getErrorMessage(err));
+    },
+  });
+
+  const unassignMutation = useMutation({
+    mutationFn: unassignShipment,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dispatch'] });
+      queryClient.invalidateQueries({ queryKey: ['shipments'] });
+      success('Shipment unassigned successfully');
     },
     onError: (err: any) => {
       toastError(getErrorMessage(err));
@@ -194,8 +207,19 @@ export const DispatchBoardPage: React.FC = () => {
                 <div className="text-xs text-ink-700">
                   Driver: <strong className="text-ink-900">{a.driverName}</strong> • Vehicle: <strong className="font-mono">{a.vehicleRegNo}</strong>
                 </div>
-                <div className="text-[11px] text-ink-500">
-                  {a.originName} → {a.destinationName} ({a.weightKg} kg)
+                <div className="flex items-center justify-between text-[11px] text-ink-500 pt-1 border-t border-river-100">
+                  <span>{a.originName} → {a.destinationName} ({a.weightKg} kg)</span>
+                  <button
+                    onClick={() => {
+                      if (window.confirm(`Unassign shipment ${a.shipmentCode}?`)) {
+                        unassignMutation.mutate(a.shipmentId);
+                      }
+                    }}
+                    disabled={unassignMutation.isPending}
+                    className="text-rust-600 hover:text-rust-800 font-semibold underline"
+                  >
+                    Unassign
+                  </button>
                 </div>
               </div>
             ))}
@@ -211,6 +235,19 @@ export const DispatchBoardPage: React.FC = () => {
                 </div>
                 <div className="text-xs text-ink-700">
                   Driver: <strong className="text-ink-900">{a.driverName}</strong> • Vehicle: <strong className="font-mono">{a.vehicleRegNo}</strong>
+                </div>
+                <div className="flex justify-end pt-1 border-t border-tea-100">
+                  <button
+                    onClick={() => {
+                      if (window.confirm(`Unassign shipment ${a.shipmentCode}?`)) {
+                        unassignMutation.mutate(a.shipmentId);
+                      }
+                    }}
+                    disabled={unassignMutation.isPending}
+                    className="text-[11px] text-rust-600 hover:text-rust-800 font-semibold underline"
+                  >
+                    Unassign
+                  </button>
                 </div>
               </div>
             ))}

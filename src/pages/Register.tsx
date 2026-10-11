@@ -3,10 +3,12 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { AuthShell } from '../components/AuthShell';
 import { User, Mail, Lock, Globe, ArrowRight, Truck, Weight, ChevronLeft } from 'lucide-react';
-import { api } from '../api/axios';
+import { useToast } from '../context/ToastContext';
+import { api, getErrorMessage } from '../api/axios';
 
 export const Register: React.FC = () => {
   const { register } = useAuth();
+  const { success: toastSuccess, warning: toastWarning } = useToast();
   const navigate = useNavigate();
 
   const [step, setStep] = useState<1 | 2>(1);
@@ -53,9 +55,10 @@ export const Register: React.FC = () => {
             type: vehicleType,
             capacityKg: parseFloat(capacityKg) || 2000,
           });
+          toastSuccess('Vehicle registered successfully');
         } catch (vehicleErr) {
           console.warn('Vehicle registration warning:', vehicleErr);
-          // Account was created successfully; user can manage vehicle in settings
+          toastWarning(`Vehicle notice: ${getErrorMessage(vehicleErr)}`);
         }
       }
 

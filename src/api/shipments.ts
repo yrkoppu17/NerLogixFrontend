@@ -106,6 +106,10 @@ export const assignShipment = async (id: number, vehicleId: number, driverUserId
   return res.data;
 };
 
+export const unassignShipment = async (id: number): Promise<void> => {
+  await api.post(`/dispatch/unassign/${id}`);
+};
+
 export const startShipment = async (id: number): Promise<Shipment> => {
   const res = await api.post(`/shipments/${id}/start`);
   return res.data;

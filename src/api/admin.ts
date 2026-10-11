@@ -8,6 +8,7 @@ export interface UserItem {
   language: string;
   active: boolean;
   createdAt: string;
+  vehicleRegNos?: string[];
 }
 
 export interface UserPageResponse {

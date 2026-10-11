@@ -121,13 +121,36 @@ export function createEventHandlerMap(queryClient: QueryClient, toast?: ToastFn)
           break;
         }
 
+        case 'user.registered': {
+          queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+          queryClient.invalidateQueries({ queryKey: ['users'] });
+          queryClient.invalidateQueries({ queryKey: ['drivers'] });
+          if (toast) {
+            toast('New user registered', 'info');
+          }
+          break;
+        }
+
         case 'shipment.assigned': {
           const s = data as ShipmentEventData;
           queryClient.invalidateQueries({ queryKey: ['shipments'] });
           queryClient.invalidateQueries({ queryKey: ['shipment', s.id] });
           queryClient.invalidateQueries({ queryKey: ['dispatch'] });
+          queryClient.invalidateQueries({ queryKey: ['drivers'] });
           if (toast) {
             toast(`Shipment #${s.id} assigned to driver`, 'success');
+          }
+          break;
+        }
+
+        case 'shipment.unassigned': {
+          const s = data as any;
+          queryClient.invalidateQueries({ queryKey: ['shipments'] });
+          queryClient.invalidateQueries({ queryKey: ['shipment', s?.id] });
+          queryClient.invalidateQueries({ queryKey: ['dispatch'] });
+          queryClient.invalidateQueries({ queryKey: ['drivers'] });
+          if (toast) {
+            toast(`Shipment #${s?.id || ''} unassigned`, 'info');
           }
           break;
         }

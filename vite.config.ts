@@ -32,20 +32,7 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: true,
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/.*\.basemaps\.cartocdn\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'carto-tiles',
-              expiration: {
-                maxEntries: 500,
-                maxAgeSeconds: 60 * 60 * 24 * 30
-              }
-            }
-          }
-        ]
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}']
       }
     })
   ],
@@ -53,7 +40,6 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          leaflet: ['leaflet', 'react-leaflet'],
           recharts: ['recharts'],
           vendor: ['react', 'react-dom', 'react-router-dom', '@tanstack/react-query', 'axios', 'lucide-react', 'i18next', 'react-i18next']
         }

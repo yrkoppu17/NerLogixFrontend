@@ -38,8 +38,24 @@ export interface DispatchBoardData {
   recentAccepted: DispatchAssignment[];
 }
 
+export interface DriverListItem {
+  id: number;
+  name: string;
+  email: string;
+  active: boolean;
+  vehicleRegNos: string[];
+  vehicleType?: string;
+  vehicleCapacityKg?: number;
+  currentJob?: string;
+}
+
 export const getDispatchCandidates = async (shipmentId: number): Promise<DriverCandidate[]> => {
   const res = await api.get('/dispatch/candidates', { params: { shipmentId } });
+  return res.data;
+};
+
+export const getDrivers = async (q?: string): Promise<DriverListItem[]> => {
+  const res = await api.get('/dispatch/drivers', { params: q ? { q } : undefined });
   return res.data;
 };
 
@@ -50,6 +66,10 @@ export const assignShipment = async (data: {
 }): Promise<DispatchAssignment> => {
   const res = await api.post('/dispatch/assign', data);
   return res.data;
+};
+
+export const unassignShipment = async (shipmentId: number): Promise<void> => {
+  await api.post(`/dispatch/unassign/${shipmentId}`);
 };
 
 export const acceptAssignment = async (id: number): Promise<DispatchAssignment> => {
@@ -71,3 +91,4 @@ export const getDispatchBoard = async (): Promise<DispatchBoardData> => {
   const res = await api.get('/dispatch/board');
   return res.data;
 };
+

@@ -61,6 +61,7 @@ export const Sidebar: React.FC = () => {
         { key: 'shipments', to: '/shipments', icon: Package, roles: ['MODERATOR', 'ADMIN'] },
         { key: 'myDeliveries', to: '/shipments', icon: Package, roles: ['USER'] },
         { key: 'vehicles', to: '/vehicles', icon: Truck, roles: ['MODERATOR', 'ADMIN'] },
+        { key: 'drivers', to: '/drivers', icon: Users, roles: ['MODERATOR', 'ADMIN'] },
         { key: 'alerts', to: '/alerts', icon: AlertTriangle },
         { key: 'driverMode', to: '/driver', icon: Truck, roles: ['USER'] },
       ],

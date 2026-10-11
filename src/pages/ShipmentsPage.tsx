@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getShipments, createShipment, assignShipment, startShipment, deliverShipment, cancelShipment, Shipment } from '../api/shipments';
+import { getShipments, createShipment, assignShipment, unassignShipment, startShipment, deliverShipment, cancelShipment, Shipment } from '../api/shipments';
 import { getVehicles } from '../api/vehicles';
+import { getDrivers, DriverListItem } from '../api/dispatch';
 import { getMapLocations, RoadNodeDto } from '../api/map';
 import { getErrorMessage } from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { Plus, RefreshCw, X, Play, CheckCircle2, Truck, User as UserIcon, MapPin } from 'lucide-react';
+import { Plus, RefreshCw, X, Play, CheckCircle2, Truck, User as UserIcon, MapPin, AlertTriangle } from 'lucide-react';
 import { GoogleMapEmbed } from '../components/GoogleMapEmbed';
 
 export const ShipmentsPage: React.FC = () => {
@@ -55,6 +56,12 @@ export const ShipmentsPage: React.FC = () => {
     queryFn: () => getVehicles({ size: 100 }),
   });
 
+  const { data: drivers = [] } = useQuery<DriverListItem[]>({
+    queryKey: ['drivers'],
+    queryFn: () => getDrivers(),
+    enabled: isModeratorOrAdmin,
+  });
+
   useEffect(() => {
     if (location.state && (location.state as any).createWithRoute) {
       const state = location.state as any;
@@ -83,8 +90,22 @@ export const ShipmentsPage: React.FC = () => {
     mutationFn: (vars: { id: number; vehicleId: number; driverUserId: number }) =>
       assignShipment(vars.id, vars.vehicleId, vars.driverUserId),
     onSuccess: () => {
-      success('Shipment assigned');
+      success('Shipment assigned to vehicle & driver!');
       queryClient.invalidateQueries({ queryKey: ['shipments'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      queryClient.invalidateQueries({ queryKey: ['dispatch'] });
+      setAssignModalShipment(null);
+    },
+    onError: (err) => toastError(getErrorMessage(err)),
+  });
+
+  const unassignMutation = useMutation({
+    mutationFn: unassignShipment,
+    onSuccess: () => {
+      success('Shipment unassigned successfully');
+      queryClient.invalidateQueries({ queryKey: ['shipments'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      queryClient.invalidateQueries({ queryKey: ['dispatch'] });
       setAssignModalShipment(null);
     },
     onError: (err) => toastError(getErrorMessage(err)),
@@ -346,12 +367,37 @@ export const ShipmentsPage: React.FC = () => {
                       onClick={() => {
                         setAssignModalShipment(s);
                         setAssignVehicleId(s.vehicle?.id || '');
-                        setAssignDriverUserId(s.driverUser?.id || user?.id || '');
+                        setAssignDriverUserId(s.driverUser?.id || '');
                       }}
                       className="px-3 py-1.5 border border-river-600 text-river-700 hover:bg-river-100 rounded-lg text-xs font-medium transition"
                     >
                       Assign Vehicle & Driver
                     </button>
+                  )}
+                  {isModeratorOrAdmin && s.status === 'ASSIGNED' && (
+                    <>
+                      <button
+                        onClick={() => {
+                          setAssignModalShipment(s);
+                          setAssignVehicleId(s.vehicle?.id || '');
+                          setAssignDriverUserId(s.driverUser?.id || '');
+                        }}
+                        className="px-3 py-1.5 border border-river-600 text-river-700 hover:bg-river-50 rounded-lg text-xs font-medium transition"
+                      >
+                        Reassign
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Unassign shipment ${s.code || '#' + s.id}? Vehicle will become idle and shipment draft.`)) {
+                            unassignMutation.mutate(s.id);
+                          }
+                        }}
+                        disabled={unassignMutation.isPending}
+                        className="px-3 py-1.5 border border-rust-300 text-rust-700 hover:bg-rust-50 rounded-lg text-xs font-medium transition disabled:opacity-50"
+                      >
+                        Unassign
+                      </button>
+                    </>
                   )}
                   {canStart && (
                     <button
@@ -541,62 +587,149 @@ export const ShipmentsPage: React.FC = () => {
       )}
 
       {/* Assign Modal */}
-      {assignModalShipment && (
-        <div className="fixed inset-0 bg-ink-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-md w-full p-6 space-y-4 shadow-xl border border-mist-200">
-            <div className="flex justify-between items-center border-b border-mist-200 pb-3">
-              <h2 className="text-lg font-bold text-ink-900 font-heading">Assign Convoy Vehicle & Driver</h2>
-              <button onClick={() => setAssignModalShipment(null)} className="text-ink-400 hover:text-ink-900">
-                <X className="w-5 h-5" />
-              </button>
+      {assignModalShipment && (() => {
+        const selectedDriver = drivers.find((d) => d.id === Number(assignDriverUserId));
+        const allVehicles = vehiclesData?.content || [];
+        const availableVehicles = selectedDriver && selectedDriver.vehicleRegNos?.length > 0
+          ? allVehicles.filter((v) => selectedDriver.vehicleRegNos.includes(v.regNo))
+          : allVehicles;
+        const currentVehicle = allVehicles.find((v) => v.id === Number(assignVehicleId));
+        const isUnderCapacity = currentVehicle && currentVehicle.capacityKg < assignModalShipment.weightKg;
+
+        const handleDriverChange = (driverIdStr: string) => {
+          const dId = driverIdStr ? Number(driverIdStr) : '';
+          setAssignDriverUserId(dId);
+          if (dId) {
+            const drv = drivers.find((d) => d.id === dId);
+            if (drv && drv.vehicleRegNos?.length > 0) {
+              const matchedV = allVehicles.find((v) => drv.vehicleRegNos.includes(v.regNo));
+              if (matchedV) {
+                setAssignVehicleId(matchedV.id);
+              }
+            }
+          }
+        };
+
+        const handleVehicleChange = (vIdStr: string) => {
+          const vId = vIdStr ? Number(vIdStr) : '';
+          setAssignVehicleId(vId);
+          if (vId) {
+            const v = allVehicles.find((item) => item.id === vId);
+            if (v && (v as any).ownerUserId) {
+              setAssignDriverUserId((v as any).ownerUserId);
+            }
+          }
+        };
+
+        return (
+          <div className="fixed inset-0 bg-ink-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl max-w-lg w-full p-6 space-y-4 shadow-xl border border-mist-200">
+              <div className="flex justify-between items-center border-b border-mist-200 pb-3">
+                <div>
+                  <h2 className="text-lg font-bold text-ink-900 font-heading">
+                    {assignModalShipment.status === 'ASSIGNED' ? 'Reassign Shipment' : 'Assign Convoy Vehicle & Driver'}
+                  </h2>
+                  <p className="text-xs text-ink-500">
+                    Shipment #{assignModalShipment.code} • Weight: <strong>{assignModalShipment.weightKg} kg</strong>
+                  </p>
+                </div>
+                <button onClick={() => setAssignModalShipment(null)} className="text-ink-400 hover:text-ink-900">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleAssignSubmit} className="space-y-4">
+                {/* Driver Selector */}
+                <div>
+                  <label className="block text-xs font-medium text-ink-600 mb-1">Select Driver</label>
+                  <select
+                    value={assignDriverUserId}
+                    onChange={(e) => handleDriverChange(e.target.value)}
+                    required
+                    className="w-full px-3 py-2 border border-mist-200 rounded-lg text-sm bg-white"
+                  >
+                    <option value="">Choose registered driver...</option>
+                    {drivers.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name} ({d.email}) {d.currentJob ? `[Active: ${d.currentJob}]` : '[Available]'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Vehicle Selector */}
+                <div>
+                  <label className="block text-xs font-medium text-ink-600 mb-1">
+                    Select Vehicle {selectedDriver ? `(Owned by ${selectedDriver.name})` : ''}
+                  </label>
+                  <select
+                    value={assignVehicleId}
+                    onChange={(e) => handleVehicleChange(e.target.value)}
+                    required
+                    className="w-full px-3 py-2 border border-mist-200 rounded-lg text-sm bg-white font-mono"
+                  >
+                    <option value="">Choose vehicle...</option>
+                    {availableVehicles.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.regNo} ({v.type}) - Cap: {v.capacityKg}kg - [{v.status}]
+                      </option>
+                    ))}
+                  </select>
+                  {selectedDriver && availableVehicles.length === 0 && (
+                    <p className="text-xs text-rust-600 mt-1">
+                      ⚠️ This driver has no registered vehicles matching the fleet inventory.
+                    </p>
+                  )}
+                </div>
+
+                {/* Capacity Warning */}
+                {isUnderCapacity && (
+                  <div className="p-3 bg-rust-50 border border-rust-200 rounded-lg text-rust-800 text-xs flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 shrink-0 text-rust-600 mt-0.5" />
+                    <span>
+                      <strong>Warning:</strong> Vehicle capacity ({currentVehicle?.capacityKg} kg) is less than payload weight ({assignModalShipment.weightKg} kg). Assignment may be rejected by the server.
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center pt-3 border-t border-mist-200">
+                  {assignModalShipment.status === 'ASSIGNED' ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm(`Unassign shipment ${assignModalShipment.code}?`)) {
+                          unassignMutation.mutate(assignModalShipment.id);
+                        }
+                      }}
+                      disabled={unassignMutation.isPending}
+                      className="px-3 py-2 border border-rust-300 text-rust-700 hover:bg-rust-50 rounded-lg text-xs font-semibold transition"
+                    >
+                      {unassignMutation.isPending ? 'Unassigning...' : 'Unassign Shipment'}
+                    </button>
+                  ) : <div />}
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAssignModalShipment(null)}
+                      className="px-4 py-2 border border-mist-200 rounded-lg text-xs font-medium text-ink-600 hover:bg-mist-100"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={assignMutation.isPending || !assignVehicleId || !assignDriverUserId}
+                      className="px-4 py-2 bg-river-600 hover:bg-river-700 text-white rounded-lg text-xs font-medium transition disabled:opacity-50"
+                    >
+                      {assignMutation.isPending ? 'Assigning...' : 'Confirm Assignment'}
+                    </button>
+                  </div>
+                </div>
+              </form>
             </div>
-            <form onSubmit={handleAssignSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-ink-600 mb-1">Select Vehicle</label>
-                <select
-                  value={assignVehicleId}
-                  onChange={(e) => setAssignVehicleId(Number(e.target.value))}
-                  required
-                  className="w-full px-3 py-2 border border-mist-200 rounded-lg text-sm bg-white font-mono"
-                >
-                  <option value="">Choose vehicle...</option>
-                  {vehiclesData?.content.map((v) => (
-                    <option key={v.id} value={v.id}>{v.regNo} ({v.type}) - {v.status}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-ink-600 mb-1">Driver User ID</label>
-                <input
-                  type="number"
-                  required
-                  value={assignDriverUserId}
-                  onChange={(e) => setAssignDriverUserId(Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-mist-200 rounded-lg text-sm font-mono"
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setAssignModalShipment(null)}
-                  className="px-4 py-2 border border-mist-200 rounded-lg text-sm font-medium text-ink-600 hover:bg-mist-100"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={assignMutation.isPending}
-                  className="px-4 py-2 bg-river-600 hover:bg-river-700 text-white rounded-lg text-sm font-medium transition"
-                >
-                  {assignMutation.isPending ? 'Assigning...' : 'Assign Convoy'}
-                </button>
-              </div>
-            </form>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 };
