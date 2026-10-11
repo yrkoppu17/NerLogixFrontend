@@ -138,6 +138,7 @@ export const VehiclesPage: React.FC = () => {
               <tr>
                 <th className="px-4 py-3">Registration</th>
                 <th className="px-4 py-3">Type</th>
+                <th className="px-4 py-3">Owner</th>
                 <th className="px-4 py-3">Capacity (kg)</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Speed (km/h)</th>
@@ -154,6 +155,13 @@ export const VehiclesPage: React.FC = () => {
                       <Truck className="w-3.5 h-3.5 text-river-600" />
                       {v.type}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 text-xs">
+                    {v.ownerName ? (
+                      <span className="font-semibold text-river-700">{v.ownerName}</span>
+                    ) : (
+                      <span className="text-ink-400 italic">Central Fleet</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 font-mono">{v.capacityKg?.toLocaleString()}</td>
                   <td className="px-4 py-3">
@@ -220,7 +228,7 @@ export const VehiclesPage: React.FC = () => {
                   <label className="block text-xs font-medium text-ink-600 mb-1">Vehicle Type</label>
                   <select
                     value={vType}
-                    onChange={(e) => setVType(e.target.value as Vehicle['type'])}
+                    onChange={(e) => setVType(e.target.value as 'TRUCK' | 'MEDICAL_VAN' | 'TANKER' | 'MINI_TRUCK')}
                     className="w-full px-3 py-2 border border-mist-200 rounded-lg text-sm bg-white"
                   >
                     <option value="TRUCK">TRUCK</option>

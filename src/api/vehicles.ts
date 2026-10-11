@@ -3,7 +3,7 @@ import api from './axios';
 export interface Vehicle {
   id: number;
   regNo: string;
-  type: 'TRUCK' | 'MEDICAL_VAN' | 'TANKER' | 'MINI_TRUCK';
+  type: string;
   capacityKg: number;
   status: 'IDLE' | 'ON_TRIP' | 'MAINTENANCE';
   lat: number;
@@ -11,6 +11,8 @@ export interface Vehicle {
   heading: number;
   speedKmph: number;
   lastSeen: string;
+  ownerUserId?: number;
+  ownerName?: string;
 }
 
 export interface VehiclePosition {
@@ -66,6 +68,31 @@ export const getVehicleTrail = async (id: number): Promise<VehiclePosition[]> =>
   return res.data;
 };
 
-export const postDriverPosition = async (positions: Array<{ lat: number; lng: number; heading?: number; speedKmph?: number }>): Promise<void> => {
-  await api.post('/vehicles/me/position', positions);
+export const getMyVehicles = async (): Promise<Vehicle[]> => {
+  const res = await api.get('/users/me/vehicles');
+  return res.data;
+};
+
+export const registerMyVehicle = async (data: {
+  regNo: string;
+  type: string;
+  capacityKg: number;
+  lat?: number;
+  lng?: number;
+}): Promise<Vehicle> => {
+  const res = await api.post('/users/me/vehicles', data);
+  return res.data;
+};
+
+export const updateMyVehicle = async (id: number, data: Partial<Vehicle>): Promise<Vehicle> => {
+  const res = await api.put(`/users/me/vehicles/${id}`, data);
+  return res.data;
+};
+
+export const deleteMyVehicle = async (id: number): Promise<void> => {
+  await api.delete(`/users/me/vehicles/${id}`);
+};
+
+export const postDriverPosition = async (positions: Array<{ lat: number; lng: number; heading?: number; speedKmph?: number; recordedAt?: string }>): Promise<void> => {
+  await api.post('/driver/positions', positions);
 };
