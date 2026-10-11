@@ -3,13 +3,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getShipments, startShipment, deliverShipment, getRouteProposal, acceptRouteProposal, rejectRouteProposal, Shipment } from '../api/shipments';
 import { postDriverPosition } from '../api/vehicles';
 import { createIncident } from '../api/incidents';
+import { getPendingAssignments, acceptAssignment, declineAssignment, DispatchAssignment } from '../api/dispatch';
 import { useAuth } from '../context/AuthContext';
-import { Truck, MapPin, Play, CheckCircle, Navigation, RefreshCw, AlertTriangle, ShieldAlert } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
+import { Truck, MapPin, Play, CheckCircle, Navigation, RefreshCw, AlertTriangle, ShieldAlert, Sparkles, Check } from 'lucide-react';
 import { GoogleMapEmbed } from '../components/GoogleMapEmbed';
 
 export const DriverPage: React.FC = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { success, error: toastError } = useToast();
   const [gpsActive, setGpsActive] = useState<boolean>(false);
   const [gpsStatusText, setGpsStatusText] = useState<string>('GPS Standby');
 
@@ -17,6 +20,38 @@ export const DriverPage: React.FC = () => {
     queryKey: ['driver-shipments', user?.id],
     queryFn: () => getShipments({ driverUserId: user?.id, size: 5 }),
     enabled: !!user?.id,
+  });
+
+  const { data: pendingAssignments = [], refetch: refetchPending } = useQuery<DispatchAssignment[]>({
+    queryKey: ['pendingAssignments', user?.id],
+    queryFn: getPendingAssignments,
+    enabled: !!user?.id,
+  });
+
+  const acceptMutation = useMutation({
+    mutationFn: acceptAssignment,
+    onSuccess: (data) => {
+      refetchPending();
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ['driver-shipments'] });
+      queryClient.invalidateQueries({ queryKey: ['dispatch'] });
+      success(`Accepted shipment ${data.shipmentCode}! Trip ready to start.`);
+    },
+    onError: (err: any) => {
+      toastError(err?.response?.data?.message || 'Failed to accept assignment');
+    },
+  });
+
+  const declineMutation = useMutation({
+    mutationFn: ({ id, reason }: { id: number; reason?: string }) => declineAssignment(id, reason),
+    onSuccess: () => {
+      refetchPending();
+      queryClient.invalidateQueries({ queryKey: ['dispatch'] });
+      success('Assignment declined.');
+    },
+    onError: (err: any) => {
+      toastError(err?.response?.data?.message || 'Failed to decline assignment');
+    },
   });
 
   const activeShipment: Shipment | undefined = shipmentsData?.content.find(
@@ -119,6 +154,60 @@ export const DriverPage: React.FC = () => {
           Refresh Trip
         </button>
       </div>
+
+      {/* Pending Dispatch Offers */}
+      {pendingAssignments.length > 0 && (
+        <div className="space-y-3">
+          {pendingAssignments.map((pa) => (
+            <div
+              key={pa.id}
+              className="p-5 bg-river-50 border-2 border-river-500 rounded-2xl shadow-md space-y-3 animate-slide-up"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-river-600 animate-spin" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-river-700">
+                    New Dispatch Assignment Received!
+                  </span>
+                </div>
+                <span className="font-mono text-xs font-bold text-ink-700">{pa.shipmentCode}</span>
+              </div>
+
+              <div className="text-sm font-semibold text-ink-900">
+                {pa.cargoDescription || 'Cargo Delivery'} ({pa.weightKg} kg)
+              </div>
+
+              <div className="text-xs text-ink-600 flex flex-wrap gap-x-4 gap-y-1">
+                <span>Route: <strong>{pa.originName} → {pa.destinationName}</strong></span>
+                <span>Assigned Vehicle: <strong>{pa.vehicleRegNo}</strong></span>
+              </div>
+
+              <div className="flex items-center gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => acceptMutation.mutate(pa.id)}
+                  disabled={acceptMutation.isPending}
+                  className="flex-1 py-2.5 bg-tea-700 hover:bg-tea-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow transition disabled:opacity-50"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Accept & Start Delivery</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const reason = window.prompt('Reason for declining this assignment (optional):') || 'Unavailable';
+                    declineMutation.mutate({ id: pa.id, reason });
+                  }}
+                  disabled={declineMutation.isPending}
+                  className="px-4 py-2.5 border border-mist-300 hover:bg-mist-100 text-ink-700 rounded-xl text-xs font-bold transition disabled:opacity-50"
+                >
+                  Decline
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Main Content */}
       {isLoading ? (

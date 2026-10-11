@@ -42,6 +42,7 @@ const AlertsPage = React.lazy(() => import('./pages/AlertsPage').then(m => ({ de
 const NotificationsPage = React.lazy(() => import('./pages/NotificationsPage').then(m => ({ default: m.NotificationsPage })))
 const DriverPage = React.lazy(() => import('./pages/DriverPage').then(m => ({ default: m.DriverPage })))
 const SettingsPage = React.lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })))
+const DispatchBoardPage = React.lazy(() => import('./pages/DispatchBoardPage').then(m => ({ default: m.DispatchBoardPage })))
 
 const UserManagementPage = React.lazy(() => import('./pages/admin/UserManagementPage').then(m => ({ default: m.UserManagementPage })))
 const NetworkDataPage = React.lazy(() => import('./pages/admin/NetworkDataPage').then(m => ({ default: m.NetworkDataPage })))
@@ -133,6 +134,17 @@ export default function App() {
                 <RoleGuard allowedRoles={['MODERATOR', 'ADMIN']}>
                   <AppShell>
                     <VehiclesPage />
+                  </AppShell>
+                </RoleGuard>
+              }
+            />
+
+            <Route
+              path="/dispatch"
+              element={
+                <RoleGuard allowedRoles={['MODERATOR', 'ADMIN']}>
+                  <AppShell>
+                    <DispatchBoardPage />
                   </AppShell>
                 </RoleGuard>
               }
